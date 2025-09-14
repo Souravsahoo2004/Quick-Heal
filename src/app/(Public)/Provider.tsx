@@ -11,7 +11,9 @@ function Provider({
     <div>
       <div>
          <Navbar/>
+         <div className='pt-16'>
         {children}
+        </div>
       </div>
     </div>
   ) 
