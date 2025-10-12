@@ -4,12 +4,15 @@ import React, { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { auth } from '@/lib/firebase'
 import { onAuthStateChanged, signOut, User } from 'firebase/auth'
+import { ShoppingCart } from 'lucide-react'
+import FeaturedProducts from '../Products/page'
+import Doctors from '../Doctors/page'
 
 const menuOption = [
     { name: 'Home', path: '/' },
     { name: 'Products', path: '/Products' },
-    { name: 'Doctors', path: '/doctors' },
-    { name: 'Orders', path: '/orders' },
+    { name: 'Doctors', path: '/Doctors' },
+    { name: 'Orders', path: '/Orders' },
     { name: 'Seller', path: '/Seller' },
 ]
 
@@ -59,8 +62,21 @@ function Navbar() {
                 </div>
             )}
 
-            {/* Right: User Profile Icon Dropdown */}
-            <div className='flex justify-end flex-1 relative'>
+            {/* Right: Cart Icon and User Profile */}
+            <div className='flex items-center gap-4 justify-end flex-1 relative'>
+                {/* Cart Icon */}
+                <Link href='/Cart' className='relative'>
+                    <ShoppingCart 
+                        size={24} 
+                        className='text-gray-700 hover:text-green-600 transition-colors cursor-pointer'
+                    />
+                    {/* Optional: Cart item count badge */}
+                    {/* <span className='absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center'>
+                        3
+                    </span> */}
+                </Link>
+
+                {/* User Profile Icon Dropdown */}
                 <button
                     onClick={() => setDropdownOpen(!dropdownOpen)}
                     className='focus:outline-none'

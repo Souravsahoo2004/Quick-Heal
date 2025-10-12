@@ -1,6 +1,7 @@
 'use client'
 import React from 'react'
 import Navbar from './_components/Navbar';
+import { AppProgressBar as ProgressBar } from 'next-nprogress-bar';
 
 function Provider({
   children,
@@ -15,6 +16,13 @@ function Provider({
         {children}
         </div>
       </div>
+      <ProgressBar
+        height="4px"
+        color="#0ea5e9"
+        options={{ showSpinner: false }}
+        shallowRouting
+        delay={100}
+      />
     </div>
   ) 
 }

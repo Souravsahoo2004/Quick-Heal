@@ -1,0 +1,134 @@
+'use client'
+
+import { motion } from 'framer-motion'
+import Image from 'next/image'
+import { Button } from '@/components/ui/button'
+import React from 'react'
+
+// Sample product data — you can fetch from your API or MongoDB later
+const products = [
+  {
+    id: 1,
+    name: 'Paracetamol 500mg Tablets',
+    price: 50,
+    oldPrice: 60,
+    discount: 20,
+    image: '/images/paracetamol.png',
+  },
+  { 
+    id: 2,
+    name: 'Cough Syrup – Quick Relief',
+    price: 120,
+    oldPrice: 150,
+    discount: 10,
+    image: '/images/cough-syrough.png',
+  },
+  {
+    id: 3,
+    name: 'Vitamin C Immunity Booster',
+    price: 220,
+    oldPrice: 250,
+    discount: 12,
+    image: '/images/vitaminc-Immunity-booster.png',
+  },
+  {
+    id: 4,
+    name: 'Digital Thermometer – Fast Read',
+    price: 350,
+    oldPrice: 400,
+    discount: 15,
+    image: '/images/digital thermometer.png',
+  },
+
+  {
+    id: 5,
+    name: 'Common Cold Tablets',
+    price: 150,
+    oldPrice: 300,
+    discount: 50,
+    image: '/images/common cold tablets.png',
+  },
+
+  {
+    id: 6,
+    name: 'Diabetic Care Tablets',
+    price: 750,
+    oldPrice: 1000,
+    discount: 5,
+    image: '/images/diabetic care tablets.png',
+  },
+
+  {
+    id: 7,
+    name: 'Nicotine Syrup',
+    price: 1550,
+    oldPrice: 2000,
+    discount: 15,
+    image: '/images/nicotic syrough.png',
+  },
+
+  {
+    id: 8,
+    name: 'Fruit Juice',
+    price: 250,
+    oldPrice: 400,
+    discount: 15,
+    image: '/images/fruit juice1.png',
+  },
+]
+
+const FeaturedProducts: React.FC = () => {
+  return (
+    <section className="w-full py-20 px-6 lg:px-24 bg-white">
+      <div className="text-center mb-12">
+        <h2 className="text-4xl font-bold text-gray-800 mb-2">🩺 Featured Products</h2>
+        <p className="text-gray-600">Top-selling medicines and healthcare essentials</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+        {products.map((product, index) => (
+          <motion.div
+            key={product.id}
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: index * 0.2 }}
+            className="relative bg-white rounded-2xl shadow-md hover:shadow-xl border border-gray-100 overflow-hidden transition-all duration-300"
+          >
+            {/* Discount Badge */}
+            <span className="absolute top-3 left-3 bg-orange-500 text-white text-sm font-semibold px-2 py-1 rounded-md">
+              -{product.discount}%
+            </span>
+
+            {/* Product Image */}
+            <div className="w-full h-52 flex items-center justify-center bg-[#fefcfb]">
+              <Image
+                src={product.image}
+                alt={product.name}
+                width={180}
+                height={180}
+                className="object-contain transition-transform duration-500 hover:scale-105"
+              />
+            </div>
+
+            {/* Product Details */}
+            <div className="p-5 text-center">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">{product.name}</h3>
+              <div className="flex justify-center items-center gap-3 mb-4">
+                <span className="text-cyan-600 font-bold text-xl">₹{product.price}</span>
+                <span className="text-gray-400 line-through text-sm">₹{product.oldPrice}</span>
+              </div>
+              <Button
+                size="sm"
+                className="w-full bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl py-2 shadow-md hover:shadow-lg transition-all"
+              >
+                Add to cart
+              </Button>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+export default FeaturedProducts
