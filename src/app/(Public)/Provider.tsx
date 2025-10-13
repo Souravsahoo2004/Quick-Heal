@@ -2,6 +2,7 @@
 import React from 'react'
 import Navbar from './_components/Navbar';
 import { AppProgressBar as ProgressBar } from 'next-nprogress-bar';
+import { CartProvider } from '../../contexts/CartContext';
 
 function Provider({
   children,
@@ -13,7 +14,9 @@ function Provider({
       <div>
          <Navbar/>
          <div className='pt-16'>
-        {children}
+          <CartProvider>
+            {children}
+          </CartProvider>
         </div>
       </div>
       <ProgressBar

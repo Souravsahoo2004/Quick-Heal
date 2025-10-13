@@ -1,55 +1,53 @@
+// src/app/(Public)/Cart/page.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trash2, Plus, Minus, ShoppingCart } from 'lucide-react';
+import { useCart } from '@/contexts/CartContext';
+import { useRouter } from 'next/navigation';
+
+// Define the CartItem interface locally if needed
+interface CartItem {
+  id: number;
+  name: string;
+  price: number;
+  qty: number;
+  img: string;
+}
 
 export default function CartPage() {
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: 'Paracetamol 500mg',
-      price: 50,
-      qty: 2,
-      img: '/images/para.jpg',
-    },
-    {
-      id: 2,
-      name: 'Vitamin C Tablets',
-      price: 120,
-      qty: 1,
-      img: '/images/vitc.jpg',
-    },
-  ]);
+  const { 
+    cartItems, 
+    updateQuantity, 
+    removeFromCart, 
+    clearCart, 
+    getSubtotal 
+  } = useCart();
+  const router = useRouter();
 
   const handleIncrease = (id: number) => {
-    setCartItems(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, qty: item.qty + 1 } : item
-      )
-    );
+    const item = cartItems.find((item: CartItem) => item.id === id);
+    if (item) {
+      updateQuantity(id, item.qty + 1);
+    }
   };
 
   const handleDecrease = (id: number) => {
-    setCartItems(prev =>
-      prev.map(item =>
-        item.id === id && item.qty > 1 ? { ...item, qty: item.qty - 1 } : item
-      )
-    );
+    const item = cartItems.find((item: CartItem) => item.id === id);
+    if (item && item.qty > 1) {
+      updateQuantity(id, item.qty - 1);
+    }
   };
 
-  const handleRemove = (id: number) => {
-    setCartItems(prev => prev.filter(item => item.id !== id));
-  };
-
-  const handleClearCart = () => {
-    setCartItems([]);
-  };
-
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const subtotal = getSubtotal();
   const delivery = subtotal > 0 ? 30 : 0;
   const total = subtotal + delivery;
+
+  const handleProceedToCheckout = () => {
+    router.push('/Checkout');
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4">
@@ -60,7 +58,7 @@ export default function CartPage() {
               <ShoppingCart className="text-blue-500" /> My Cart
             </h2>
             {cartItems.length > 0 && (
-              <Button variant="ghost" onClick={handleClearCart} className="text-red-600 hover:text-red-700">
+              <Button variant="ghost" onClick={clearCart} className="text-red-600 hover:text-red-700">
                 <Trash2 size={16} />
                 Clear Cart
               </Button>
@@ -77,7 +75,7 @@ export default function CartPage() {
             </div>
           ) : (
             <div className="space-y-6">
-              {cartItems.map(item => (
+              {cartItems.map((item: CartItem) => (
                 <div
                   key={item.id}
                   className="flex flex-col sm:flex-row justify-between items-center border-b pb-4 gap-4"
@@ -118,7 +116,7 @@ export default function CartPage() {
                     </p>
                     <Button
                       variant="ghost"
-                      onClick={() => handleRemove(item.id)}
+                      onClick={() => removeFromCart(item.id)}
                       className="text-red-600 hover:text-red-700"
                     >
                       <Trash2 size={16} />
@@ -147,7 +145,10 @@ export default function CartPage() {
               </div>
             </div>
 
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto px-8 py-2">
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto px-8 py-2"
+              onClick={handleProceedToCheckout}
+            >
               Proceed to Checkout
             </Button>
           </CardFooter>

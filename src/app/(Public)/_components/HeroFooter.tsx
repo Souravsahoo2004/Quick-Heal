@@ -1,12 +1,23 @@
+
 'use client'
 
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import React from 'react'
+import { useCart } from '@/contexts/CartContext'
 
-// Sample product data — you can fetch from your API or MongoDB later
-const products = [
+// Define Product interface
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+  oldPrice: number;
+  discount: number;
+  image: string;
+}
+
+const products: Product[] = [
   {
     id: 1,
     name: 'Paracetamol 500mg Tablets',
@@ -17,7 +28,7 @@ const products = [
   },
   { 
     id: 2,
-    name: 'Cough Syrup – Quick Relief Formula',
+    name: 'Cough Syrup – Quick Relief',
     price: 120,
     oldPrice: 150,
     discount: 10,
@@ -39,7 +50,6 @@ const products = [
     discount: 15,
     image: '/images/digital thermometer.png',
   },
-
   {
     id: 5,
     name: 'Common Cold Tablets',
@@ -48,7 +58,6 @@ const products = [
     discount: 50,
     image: '/images/common cold tablets.png',
   },
-
   {
     id: 6,
     name: 'Diabetic Care Tablets',
@@ -57,7 +66,6 @@ const products = [
     discount: 5,
     image: '/images/diabetic care tablets.png',
   },
-
   {
     id: 7,
     name: 'Nicotine Syrup',
@@ -66,7 +74,6 @@ const products = [
     discount: 15,
     image: '/images/nicotic syrough.png',
   },
-
   {
     id: 8,
     name: 'Fruit Juice',
@@ -78,6 +85,14 @@ const products = [
 ]
 
 const FeaturedProducts: React.FC = () => {
+  const { addToCart } = useCart();
+
+  const handleAddToCart = (product: Product) => {
+    addToCart(product);
+    // Optional: Show success message
+    alert(`${product.name} added to cart!`);
+  };
+
   return (
     <section className="w-full py-20 px-6 lg:px-24 bg-white">
       <div className="text-center mb-12">
@@ -86,7 +101,7 @@ const FeaturedProducts: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-        {products.map((product, index) => (
+        {products.map((product: Product, index: number) => (
           <motion.div
             key={product.id}
             initial={{ opacity: 0, y: 40 }}
@@ -94,12 +109,10 @@ const FeaturedProducts: React.FC = () => {
             transition={{ duration: 0.5, delay: index * 0.2 }}
             className="relative bg-white rounded-2xl shadow-md hover:shadow-xl border border-gray-100 overflow-hidden transition-all duration-300"
           >
-            {/* Discount Badge */}
             <span className="absolute top-3 left-3 bg-orange-500 text-white text-sm font-semibold px-2 py-1 rounded-md">
               -{product.discount}%
             </span>
 
-            {/* Product Image */}
             <div className="w-full h-52 flex items-center justify-center bg-[#fefcfb]">
               <Image
                 src={product.image}
@@ -110,7 +123,6 @@ const FeaturedProducts: React.FC = () => {
               />
             </div>
 
-            {/* Product Details */}
             <div className="p-5 text-center">
               <h3 className="text-lg font-semibold text-gray-800 mb-2">{product.name}</h3>
               <div className="flex justify-center items-center gap-3 mb-4">
@@ -120,6 +132,7 @@ const FeaturedProducts: React.FC = () => {
               <Button
                 size="sm"
                 className="w-full bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl py-2 shadow-md hover:shadow-lg transition-all"
+                onClick={() => handleAddToCart(product)}
               >
                 Add to cart
               </Button>
