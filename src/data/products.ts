@@ -13,6 +13,7 @@ export type ProductFull = {
   highlights: string[];
 };
 
+// Example catalog; extend as needed
 export const PRODUCTS: Record<string, ProductFull> = {
   'oppo-k13x-5g': {
     id: 101,
@@ -38,7 +39,7 @@ export const PRODUCTS: Record<string, ProductFull> = {
       'Qualcomm Snapdragon 6 Gen 1 Processor',
     ],
   },
-  // add more products with consistent structure...
+  // Add more products with same shape...
 };
 
 export function getProductBySlug(slug: string) {

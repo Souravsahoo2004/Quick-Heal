@@ -20,6 +20,7 @@
     "firebase": "^12.2.1",
     "framer-motion": "^12.23.22",
     "lucide-react": "^0.544.0",
+    "mongoose": "^8.19.1",
     "next": "15.5.3",
     "next-auth": "^4.24.11",
     "next-nprogress-bar": "^2.4.7",
@@ -28,6 +29,7 @@
     "react-dom": "19.1.0",
     "react-email": "^4.3.0",
     "resend": "^6.1.2",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {

@@ -3,6 +3,8 @@ import React from 'react'
 import Navbar from './_components/Navbar';
 import { AppProgressBar as ProgressBar } from 'next-nprogress-bar';
 import { CartProvider } from '../../contexts/CartContext';
+import type { ReactNode } from 'react';
+import { SonnerToaster } from '@/components/sonner-toaster';
 
 function Provider({
   children,
@@ -16,6 +18,7 @@ function Provider({
          <div className='pt-16'>
           <CartProvider>
             {children}
+            <SonnerToaster />
           </CartProvider>
         </div>
       </div>

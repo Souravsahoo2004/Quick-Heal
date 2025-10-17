@@ -2,6 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { toast } from 'sonner';
 
 // Define TypeScript interfaces
 interface CartItem {
@@ -40,20 +41,30 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setCartItems(prev => {
       const existingItem = prev.find(item => item.id === product.id);
       if (existingItem) {
-        return prev.map(item =>
-          item.id === product.id
-            ? { ...item, qty: item.qty + 1 }
-            : item
+        const updated = prev.map(item =>
+          item.id === product.id ? { ...item, qty: item.qty + 1 } : item
         );
+        return updated;
       } else {
-        return [...prev, {
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          qty: 1,
-          img: product.image || '/images/default.jpg'
-        }];
+        const next: CartItem[] = [
+          ...prev,
+          {
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            qty: 1,
+            img: product.image || '/images/default.jpg',
+          },
+        ];
+        return next;
       }
+    });
+
+    // Single non-blocking notification
+    toast.success(`${product.name} added to cart`, {
+      description: 'You can review it in your cart anytime.',
+      icon: '🛒',
+      duration: 2500,
     });
   };
 
@@ -63,9 +74,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
     setCartItems(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, qty } : item
-      )
+      prev.map(item => (item.id === id ? { ...item, qty } : item))
     );
   };
 
@@ -92,14 +101,10 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     removeFromCart,
     clearCart,
     getTotalItems,
-    getSubtotal
+    getSubtotal,
   };
 
-  return (
-    <CartContext.Provider value={contextValue}>
-      {children}
-    </CartContext.Provider>
-  );
+  return <CartContext.Provider value={contextValue}>{children}</CartContext.Provider>;
 };
 
 export const useCart = () => {
