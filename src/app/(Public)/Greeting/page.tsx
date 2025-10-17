@@ -150,7 +150,7 @@ export default function GreetingPage() {
             Continue Shopping
           </button>
           <button
-            onClick={() => router.push("/my-orders")}
+            onClick={() => router.push("/my-Orders")}
             className="w-full sm:w-auto px-6 py-3 rounded-xl border border-gray-300 text-gray-700 font-medium bg-white hover:bg-gray-100 hover:shadow-md hover:scale-105 transform transition-all duration-300 flex items-center justify-center gap-2"
           >
             <Package className="w-4 h-4" />

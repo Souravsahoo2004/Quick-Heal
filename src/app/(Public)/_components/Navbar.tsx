@@ -12,7 +12,7 @@ const menuOption = [
     { name: 'Home', path: '/' },
     { name: 'Products', path: '/Products' },
     { name: 'Doctors', path: '/Doctors' },
-    { name: 'Orders', path: '/Orders' },
+    { name: 'Orders', path: '/my-Orders' },
     { name: 'Seller', path: '/Seller' },
 ]
 
