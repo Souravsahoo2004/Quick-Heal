@@ -1,11 +1,13 @@
-'use client';
+// src/app/(Public)/Order/page.tsx
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Package, MapPin, FileText, Truck } from 'lucide-react';
-import { useCart } from '@/contexts/CartContext';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from "react";
+import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Package, MapPin, FileText, Truck } from "lucide-react";
+import { useCart } from "@/contexts/CartContext";
+import { useRouter } from "next/navigation";
+import { placeOrderFromCart } from "@/lib/orders";
 
 // Interfaces
 interface CartItem {
@@ -29,12 +31,9 @@ interface Address {
 }
 
 export default function OrderPage() {
-  const { cartItems, getSubtotal, clearCart } = useCart();
+  const { cartItems, getSubtotal } = useCart();
   const router = useRouter();
 
-  const [orderId] = useState<string>(
-    `#QH${Math.random().toString(36).substr(2, 6).toUpperCase()}`
-  );
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isPlacingOrder, setIsPlacingOrder] = useState<boolean>(false);
@@ -43,43 +42,41 @@ export default function OrderPage() {
   const delivery = 30;
   const total = subtotal + delivery;
 
-  // ✅ Load selected address only once (not dependent on cartItems length)
+  // Load selected address from localStorage
   useEffect(() => {
     try {
-      const selectedAddressId = localStorage.getItem('selectedAddressId');
-      const savedAddresses = localStorage.getItem('userAddresses');
+      const selectedAddressId = localStorage.getItem("selectedAddressId");
+      const savedAddresses = localStorage.getItem("userAddresses");
 
       if (!selectedAddressId || !savedAddresses) {
-        router.push('/Checkout');
+        router.push("/Checkout");
         return;
       }
 
       const addresses: Address[] = JSON.parse(savedAddresses);
-      const selectedAddr = addresses.find(
-        (addr: Address) => addr.id === selectedAddressId
-      );
+      const selectedAddr = addresses.find((addr: Address) => addr.id === selectedAddressId);
 
       if (!selectedAddr) {
-        router.push('/Checkout');
+        router.push("/Checkout");
         return;
       }
 
       setSelectedAddress(selectedAddr);
       setIsLoading(false);
     } catch (error) {
-      console.error('Error loading address:', error);
-      router.push('/Checkout');
+      console.error("Error loading address:", error);
+      router.push("/Checkout");
     }
   }, [router]);
 
-  // ✅ Email sending (optional)
+  // Optional: email confirmation
   const sendOrderConfirmationEmail = async (orderData: any) => {
     try {
-      const response = await fetch('/api/send-order-confirmation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/send-order-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customerEmail: 'customer@example.com',
+          customerEmail: "customer@example.com",
           customerName: orderData.address.name,
           orderNumber: orderData.id,
           orderDate: orderData.date,
@@ -93,66 +90,56 @@ export default function OrderPage() {
       });
       return response.ok;
     } catch (error) {
-      console.error('Error sending email:', error);
+      console.error("Error sending email:", error);
       return false;
     }
   };
 
-  // ✅ Place order and redirect to Greeting
   const handlePlaceOrder = async () => {
     try {
       setIsPlacingOrder(true);
+      if (!selectedAddress) throw new Error("No address selected");
 
+      // Persist order to Firestore and clear cart atomically
+      const res = await placeOrderFromCart(
+        {
+          name: selectedAddress.name,
+          phone: selectedAddress.phone,
+          addressLine1: selectedAddress.addressLine1,
+          addressLine2: selectedAddress.addressLine2 || "",
+          city: selectedAddress.city,
+          state: selectedAddress.state,
+          pincode: selectedAddress.pincode,
+        },
+        delivery
+      );
+
+      // Optional email
       const orderData = {
-        id: orderId,
-        date: new Date().toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
+        id: res.orderId,
+        date: new Date().toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
         }),
-        expectedDelivery: new Date(
-          Date.now() + 2 * 24 * 60 * 60 * 1000
-        ).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
+        expectedDelivery: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
         }),
         items: cartItems,
         address: selectedAddress,
       };
-
-      await new Promise((resolve) => setTimeout(resolve, 1500)); // fake delay
       await sendOrderConfirmationEmail(orderData);
 
-      const orderSummary = {
-        orderId,
-        total,
-        expectedDelivery: orderData.expectedDelivery,
-        itemCount: cartItems.length,
-        customerName: selectedAddress?.name,
-        orderDate: orderData.date,
-      };
-
-      localStorage.setItem('lastOrderSummary', JSON.stringify(orderSummary));
-
-      // ✅ redirect first → clearCart after redirect
-      router.push('/Greeting');
-
-      setTimeout(() => {
-        clearCart();
-        localStorage.removeItem('selectedAddressId');
-      }, 500);
-
+      // Go to orders page
+      router.push("/my-Orders");
+    } catch (e: any) {
+      console.error("Error placing order:", e);
+      alert(e.message || "Failed to place order");
+    } finally {
       setIsPlacingOrder(false);
-    } catch (error) {
-      console.error('Error placing order:', error);
-      setIsPlacingOrder(false);
-      alert('There was an error placing your order. Please try again.');
     }
-  };
-
-  const handleChangeAddress = () => {
-    router.push('/Checkout');
   };
 
   if (isLoading) {
@@ -167,7 +154,7 @@ export default function OrderPage() {
   if (!selectedAddress) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p>No address selected. Redirecting...</p>
+        <p>No address selected, redirecting...</p>
       </div>
     );
   }
@@ -180,10 +167,10 @@ export default function OrderPage() {
             <div>
               <h2 className="text-xl font-semibold text-gray-800">Order Summary</h2>
               <p className="text-sm text-gray-500">
-                {new Date().toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric',
+                {new Date().toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
                 })}
               </p>
             </div>
@@ -224,17 +211,16 @@ export default function OrderPage() {
                   <p className="font-medium">{selectedAddress.name}</p>
                   <p className="text-sm text-gray-600">{selectedAddress.phone}</p>
                   <p className="text-sm text-gray-600">
-                    {selectedAddress.addressLine1},{' '}
+                    {selectedAddress.addressLine1},{" "}
                     {selectedAddress.addressLine2 && `${selectedAddress.addressLine2}, `}
-                    {selectedAddress.city}, {selectedAddress.state} -{' '}
-                    {selectedAddress.pincode}
+                    {selectedAddress.city}, {selectedAddress.state} - {selectedAddress.pincode}
                   </p>
                 </div>
               </div>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleChangeAddress}
+                onClick={() => router.push("/Checkout")}
                 className="text-blue-600"
               >
                 Change
@@ -242,12 +228,12 @@ export default function OrderPage() {
             </div>
             <p className="text-xs text-gray-500 flex items-center gap-1">
               <Truck className="w-3 h-3" />
-              Expected Delivery:{' '}
+              Expected Delivery:{" "}
               <span className="font-semibold text-green-600">
-                {new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric',
+                {new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
                 })}
               </span>
             </p>
@@ -275,7 +261,7 @@ export default function OrderPage() {
           <Button
             variant="outline"
             className="flex items-center gap-2 w-full sm:w-auto"
-            onClick={() => router.push('/Cart')}
+            onClick={() => router.push("/Cart")}
             disabled={isPlacingOrder}
           >
             <FileText size={18} />

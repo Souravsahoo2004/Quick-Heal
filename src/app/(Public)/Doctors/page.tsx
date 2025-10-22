@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import React, { useState, ChangeEvent, FormEvent } from 'react'
+import { auth } from '@/lib/firebase' // import Firebase Auth client
 
 interface AppointmentForm {
   name: string
@@ -35,7 +36,7 @@ const DoctorAppointmentSection: React.FC = () => {
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value })
-    setError('') // Clear error when user starts typing
+    setError('')
   }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -44,22 +45,41 @@ const DoctorAppointmentSection: React.FC = () => {
     setError('')
 
     try {
-      const response = await fetch('/api/appointments', {
+      // Read current user at submit time
+      const u = auth.currentUser
+      if (!u) {
+        setError('Please log in to book an appointment.')
+        return
+      }
+
+      // Include uid so server can store userId in Firestore
+      const payload = { ...form, uid: u.uid }
+
+      // Post to App Router route handler (/api/appointments)
+      const response = await fetch('/api/appointment', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(form),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       })
 
       const result = await response.json()
 
       if (response.ok) {
-        // Show success message on page (no popup)
+        const pretty = new Date(form.date).toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+
         setIsSuccess(true)
-        setAppointmentDetails(result.appointmentDetails)
-        
-        // Reset form
+        setAppointmentDetails({
+          name: form.name,
+          doctor: form.doctor,
+          date: pretty,
+          email: form.email,
+        })
+
         setForm({
           name: '',
           email: '',
@@ -68,12 +88,10 @@ const DoctorAppointmentSection: React.FC = () => {
           message: '',
         })
 
-        // Auto hide success message after 10 seconds
         setTimeout(() => {
           setIsSuccess(false)
           setAppointmentDetails(null)
         }, 10000)
-
       } else {
         setError(result.error || 'Failed to send appointment request')
       }
@@ -85,13 +103,11 @@ const DoctorAppointmentSection: React.FC = () => {
     }
   }
 
-  // Get minimum date (today)
   const getMinDate = () => {
     const today = new Date()
     return today.toISOString().split('T')[0]
   }
 
-  // Get maximum date (3 months from now)
   const getMaxDate = () => {
     const maxDate = new Date()
     maxDate.setMonth(maxDate.getMonth() + 3)
@@ -146,7 +162,6 @@ const DoctorAppointmentSection: React.FC = () => {
         >
           <AnimatePresence mode="wait">
             {isSuccess && appointmentDetails ? (
-              // Success Message Display
               <motion.div
                 key="success"
                 initial={{ opacity: 0, y: 20 }}
@@ -194,7 +209,6 @@ const DoctorAppointmentSection: React.FC = () => {
                 </Button>
               </motion.div>
             ) : (
-              // Booking Form
               <motion.div
                 key="form"
                 initial={{ opacity: 0 }}
@@ -211,7 +225,6 @@ const DoctorAppointmentSection: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Error Message */}
                 {error && (
                   <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
                     <strong>❌ Error:</strong> {error}
@@ -324,9 +337,7 @@ const DoctorAppointmentSection: React.FC = () => {
                         Sending Request...
                       </>
                     ) : (
-                      <>
-                        📅 Book Appointment
-                      </>
+                      <>📅 Book Appointment</>
                     )}
                   </Button>
 
