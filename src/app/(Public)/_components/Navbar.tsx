@@ -14,6 +14,7 @@ const menuOption = [
   { name: 'Doctors', path: '/Doctors' },
   { name: 'Orders', path: '/my-Orders' },
   { name: 'Seller', path: '/Seller' },
+  { name: 'About', path: '/AboutPage' },
 ]
 
 function Navbar() {

@@ -1,6 +1,6 @@
 'use client'
 import React from 'react'
-import Navbar from './_components/navbar';
+import Navbar from './_Components/navbar';
 
 function SellerProvider({
   children,
