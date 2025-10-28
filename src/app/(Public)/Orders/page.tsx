@@ -1,4 +1,4 @@
-// src/app/(Public)/Order/page.tsx
+// src/app/(Public)/Orders/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -7,42 +7,45 @@ import { Button } from "@/components/ui/button";
 import { Package, MapPin, FileText, Truck } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useRouter } from "next/navigation";
-import { placeOrderFromCart } from "@/lib/orders";
-
-// Interfaces
-interface CartItem {
-  id: number;
-  name: string;
-  price: number;
-  qty: number;
-  img: string;
-}
-
-interface Address {
-  id: string;
-  name: string;
-  phone: string;
-  addressLine1: string;
-  addressLine2?: string;
-  city: string;
-  state: string;
-  pincode: string;
-  isDefault: boolean;
-}
+import { useMutation } from "convex/react";
+import { api } from "convex/_generated/api";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import type { Address } from "@/types/cart";
 
 export default function OrderPage() {
-  const { cartItems, getSubtotal } = useCart();
+  const { cartItems, getSubtotal, clearCart } = useCart();
   const router = useRouter();
 
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isPlacingOrder, setIsPlacingOrder] = useState<boolean>(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  // ✅ Convex mutation
+  const createOrder = useMutation(api.orders.createOrder);
 
   const subtotal = getSubtotal();
   const delivery = 30;
   const total = subtotal + delivery;
 
-  // Load selected address from localStorage
+  // Firebase auth
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUserId(user.uid);
+        setUserEmail(user.email);
+      } else {
+        setUserId(null);
+        setUserEmail(null);
+        router.push('/login');
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
+
+  // Load selected address
   useEffect(() => {
     try {
       const selectedAddressId = localStorage.getItem("selectedAddressId");
@@ -54,7 +57,7 @@ export default function OrderPage() {
       }
 
       const addresses: Address[] = JSON.parse(savedAddresses);
-      const selectedAddr = addresses.find((addr: Address) => addr.id === selectedAddressId);
+      const selectedAddr = addresses.find((addr) => addr.id === selectedAddressId);
 
       if (!selectedAddr) {
         router.push("/Checkout");
@@ -69,71 +72,118 @@ export default function OrderPage() {
     }
   }, [router]);
 
-  // Optional: email confirmation
-  const sendOrderConfirmationEmail = async (orderData: any) => {
-    try {
-      const response = await fetch("/api/send-order-confirmation", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerEmail: "customer@example.com",
-          customerName: orderData.address.name,
-          orderNumber: orderData.id,
-          orderDate: orderData.date,
-          items: orderData.items,
-          address: orderData.address,
-          subtotal,
-          delivery,
-          total,
-          expectedDelivery: orderData.expectedDelivery,
-        }),
-      });
-      return response.ok;
-    } catch (error) {
-      console.error("Error sending email:", error);
-      return false;
-    }
-  };
-
   const handlePlaceOrder = async () => {
     try {
       setIsPlacingOrder(true);
-      if (!selectedAddress) throw new Error("No address selected");
+      
+      if (!selectedAddress || !userId || !userEmail) {
+        throw new Error("Missing required information");
+      }
 
-      // Persist order to Firestore and clear cart atomically
-      const res = await placeOrderFromCart(
-        {
-          name: selectedAddress.name,
-          phone: selectedAddress.phone,
-          addressLine1: selectedAddress.addressLine1,
-          addressLine2: selectedAddress.addressLine2 || "",
-          city: selectedAddress.city,
-          state: selectedAddress.state,
-          pincode: selectedAddress.pincode,
-        },
-        delivery
+      const fullAddress = `${selectedAddress.addressLine1}, ${selectedAddress.addressLine2 || ''}, ${selectedAddress.city}, ${selectedAddress.state} - ${selectedAddress.pincode}`;
+
+      // ✅ Create orders in Convex for items that have productId
+      const orderPromises = cartItems
+        .filter(item => item.productId) // Only process items with Convex product ID
+        .map((item) => 
+          createOrder({
+            userId,
+            userEmail,
+            productId: item.productId as any,
+            quantity: item.qty,
+            totalPrice: item.price * item.qty,
+            shippingAddress: fullAddress,
+          })
+        );
+
+      if (orderPromises.length === 0) {
+        throw new Error("No valid items to order");
+      }
+
+      const orderIds = await Promise.all(orderPromises);
+      console.log(`✅ Created ${orderPromises.length} orders in Convex`);
+
+      // ✅ Generate order number from first order ID
+      const orderNumber = `#QH${orderIds[0].toString().slice(-6).toUpperCase()}`;
+
+      // ✅ Calculate dates
+      const orderDate = new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+      
+      const expectedDeliveryDate = new Date();
+      expectedDeliveryDate.setDate(expectedDeliveryDate.getDate() + 2);
+      const expectedDelivery = expectedDeliveryDate.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+
+      // ✅ Send confirmation emails to BOTH customer and admin
+      console.log("📧 Sending order confirmation emails...");
+      
+      try {
+        const emailResponse = await fetch("/api/send-order-confirmation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            // Customer info
+            customerEmail: userEmail,
+            customerName: selectedAddress.name,
+            
+            // Order details
+            orderNumber: orderNumber,
+            orderDate: orderDate,
+            expectedDelivery: expectedDelivery,
+            
+            // Items
+            items: cartItems.map(item => ({
+              id: item.id,
+              name: item.name,
+              price: item.price,
+              qty: item.qty,
+              img: item.img,
+            })),
+            
+            // Address
+            address: selectedAddress,
+            
+            // Pricing
+            subtotal: subtotal,
+            delivery: delivery,
+            total: total,
+          }),
+        });
+
+        const emailResult = await emailResponse.json();
+
+        if (emailResult.success) {
+          console.log("✅ Emails sent successfully!");
+          console.log("Customer email:", emailResult.data.customer.email);
+          console.log("Admin email:", emailResult.data.admin.email);
+        } else {
+          console.error("❌ Failed to send emails:", emailResult.details);
+          // Don't throw error - order is already placed
+        }
+      } catch (emailError) {
+        console.error("Email error (non-critical):", emailError);
+        // Don't fail the order if email fails
+      }
+
+      // Clear cart after successful order
+      await clearCart();
+
+      alert(
+        `Order placed successfully! 🎉\n\n` +
+        `Order Number: ${orderNumber}\n\n` +
+        `✅ Confirmation email sent to: ${userEmail}\n` +
+        `✅ Admin has been notified`
       );
-
-      // Optional email
-      const orderData = {
-        id: res.orderId,
-        date: new Date().toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        }),
-        expectedDelivery: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        }),
-        items: cartItems,
-        address: selectedAddress,
-      };
-      await sendOrderConfirmationEmail(orderData);
-
-      // Go to orders page
+      
       router.push("/my-Orders");
+
     } catch (e: any) {
       console.error("Error placing order:", e);
       alert(e.message || "Failed to place order");
@@ -181,28 +231,35 @@ export default function OrderPage() {
         </CardHeader>
 
         <CardContent className="space-y-6">
-          {/* Items */}
+          {/* Items Section */}
           <div>
             <h3 className="font-medium text-gray-800 border-b pb-2">Items</h3>
-            {cartItems.map((item: CartItem, i: number) => (
-              <div key={i} className="flex justify-between py-4 border-b last:border-none">
-                <div className="flex items-center gap-4">
-                  <img
-                    src={item.img}
-                    alt={item.name}
-                    className="w-16 h-16 rounded-lg border object-cover"
-                  />
-                  <div>
-                    <p className="font-medium text-gray-800">{item.name}</p>
-                    <p className="text-sm text-gray-500">Qty: {item.qty}</p>
-                  </div>
-                </div>
-                <p className="font-semibold text-gray-700">₹{item.price * item.qty}</p>
+            {cartItems.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Package className="mx-auto mb-2 text-gray-400" size={40} />
+                <p>No items in cart</p>
               </div>
-            ))}
+            ) : (
+              cartItems.map((item, i) => (
+                <div key={item.id || i} className="flex justify-between py-4 border-b last:border-none">
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={item.img}
+                      alt={item.name}
+                      className="w-16 h-16 rounded-lg border object-cover"
+                    />
+                    <div>
+                      <p className="font-medium text-gray-800">{item.name}</p>
+                      <p className="text-sm text-gray-500">Qty: {item.qty}</p>
+                    </div>
+                  </div>
+                  <p className="font-semibold text-gray-700">₹{item.price * item.qty}</p>
+                </div>
+              ))
+            )}
           </div>
 
-          {/* Address */}
+          {/* Delivery Address Section */}
           <div className="bg-gray-50 p-4 rounded-lg border">
             <div className="flex justify-between items-start mb-2">
               <div className="flex gap-3">
@@ -222,11 +279,12 @@ export default function OrderPage() {
                 size="sm"
                 onClick={() => router.push("/Checkout")}
                 className="text-blue-600"
+                disabled={isPlacingOrder}
               >
                 Change
               </Button>
             </div>
-            <p className="text-xs text-gray-500 flex items-center gap-1">
+            <p className="text-xs text-gray-500 flex items-center gap-1 mt-3">
               <Truck className="w-3 h-3" />
               Expected Delivery:{" "}
               <span className="font-semibold text-green-600">
@@ -239,21 +297,28 @@ export default function OrderPage() {
             </p>
           </div>
 
-          {/* Price Summary */}
+          {/* Price Summary Section */}
           <div className="bg-gray-50 p-4 rounded-lg border">
             <h3 className="font-medium text-gray-800 mb-3">Price Summary</h3>
-            <div className="flex justify-between text-sm text-gray-600">
+            <div className="flex justify-between text-sm text-gray-600 mb-2">
               <span>Subtotal</span>
-              <span>₹{subtotal}</span>
+              <span>₹{subtotal.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-sm text-gray-600">
+            <div className="flex justify-between text-sm text-gray-600 mb-2">
               <span>Delivery Fee</span>
-              <span>₹{delivery}</span>
+              <span>₹{delivery.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between font-semibold text-gray-800 mt-2 border-t pt-2">
+            <div className="flex justify-between font-semibold text-gray-800 text-lg mt-3 pt-3 border-t">
               <span>Total</span>
-              <span>₹{total}</span>
+              <span className="text-green-600">₹{total.toFixed(2)}</span>
             </div>
+          </div>
+
+          {/* Email Notification Info */}
+          <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+            <p className="text-xs text-blue-700 text-center">
+              📧 Order confirmation will be sent to <strong>{userEmail}</strong>
+            </p>
           </div>
         </CardContent>
 
@@ -268,19 +333,24 @@ export default function OrderPage() {
             Back to Cart
           </Button>
           <Button
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto px-8 disabled:opacity-50"
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto px-8 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handlePlaceOrder}
-            disabled={isPlacingOrder}
+            disabled={isPlacingOrder || cartItems.length === 0}
           >
             {isPlacingOrder ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                 Placing Order...
               </>
+            ) : cartItems.length === 0 ? (
+              <>
+                <Package size={18} />
+                Cart is Empty
+              </>
             ) : (
               <>
                 <Package size={18} />
-                Place Order (₹{total})
+                Place Order (₹{total.toFixed(2)})
               </>
             )}
           </Button>

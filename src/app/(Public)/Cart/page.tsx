@@ -7,15 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Trash2, Plus, Minus, ShoppingCart } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useRouter } from 'next/navigation';
-
-// Define the CartItem interface locally if needed
-interface CartItem {
-  id: number;
-  name: string;
-  price: number;
-  qty: number;
-  img: string;
-}
+import type { CartItem } from '@/types/cart'; // ✅ Import from shared types
 
 export default function CartPage() {
   const { 
@@ -27,15 +19,15 @@ export default function CartPage() {
   } = useCart();
   const router = useRouter();
 
-  const handleIncrease = (id: number) => {
-    const item = cartItems.find((item: CartItem) => item.id === id);
+  const handleIncrease = (id: string | number) => {
+    const item = cartItems.find((item) => item.id === id);
     if (item) {
       updateQuantity(id, item.qty + 1);
     }
   };
 
-  const handleDecrease = (id: number) => {
-    const item = cartItems.find((item: CartItem) => item.id === id);
+  const handleDecrease = (id: string | number) => {
+    const item = cartItems.find((item) => item.id === id);
     if (item && item.qty > 1) {
       updateQuantity(id, item.qty - 1);
     }
@@ -75,7 +67,7 @@ export default function CartPage() {
             </div>
           ) : (
             <div className="space-y-6">
-              {cartItems.map((item: CartItem) => (
+              {cartItems.map((item) => (
                 <div
                   key={item.id}
                   className="flex flex-col sm:flex-row justify-between items-center border-b pb-4 gap-4"

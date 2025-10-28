@@ -18,7 +18,7 @@ const menuOption = [
   
   { name: "Dashboard", path: "/Seller/Dashboard" },
   { name: "Management", path: "/Seller/Management" },
-  { name: "Orders", path: "/Seller/Orders" },
+  { name: "Orders", path: "/Seller/Admin_Orders" },
   { name: "buyer", path: "/" },
 
   { name: "About", path: "/AboutPage" },

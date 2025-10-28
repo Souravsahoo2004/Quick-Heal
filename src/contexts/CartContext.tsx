@@ -16,29 +16,33 @@ import {
   increment,
 } from "firebase/firestore";
 import { auth, firestore } from "@/lib/firebase";
+import { useMutation } from "convex/react";
+import { api } from "convex/_generated/api";
 
 interface CartItem {
-  id: number | string; // Updated to support both number and string
+  id: number | string;
   name: string;
   price: number;
   qty: number;
   img: string;
+  productId?: string; // ✅ Add Convex product ID for syncing
 }
 
 interface Product {
-  id: number | string; // Updated to support both number and string
+  id: number | string;
   name: string;
   price: number;
   oldPrice: number;
   discount: number;
   image: string;
+  convexProductId?: string; // ✅ Add Convex product ID
 }
 
 interface CartContextType {
   cartItems: CartItem[];
   addToCart: (product: Product) => Promise<void>;
-  updateQuantity: (id: number | string, qty: number) => Promise<void>; // Updated parameter type
-  removeFromCart: (id: number | string) => Promise<void>; // Updated parameter type
+  updateQuantity: (id: number | string, qty: number) => Promise<void>;
+  removeFromCart: (id: number | string) => Promise<void>;
   clearCart: () => Promise<void>;
   getTotalItems: () => number;
   getSubtotal: () => number;
@@ -49,6 +53,12 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [uid, setUid] = useState<string | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+
+  // Convex mutations
+  const addToCartConvex = useMutation(api.cart.addToCart);
+  const removeFromCartConvex = useMutation(api.cart.removeFromCart);
+  const updateCartConvex = useMutation(api.cart.updateCartQuantity);
+  const clearCartConvex = useMutation(api.cart.clearCart);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => setUid(user ? user.uid : null));
@@ -66,11 +76,12 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const list: CartItem[] = snap.docs.map((d) => {
         const data = d.data() as any;
         return {
-          id: d.id, // Keep as string from Firestore document ID
+          id: d.id,
           name: data.name,
           price: data.price,
           qty: data.qty,
           img: data.img || "/images/default.jpg",
+          productId: data.productId || d.id, // Store Convex product ID
         };
       });
       setCartItems(list);
@@ -81,11 +92,10 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const addToCart = async (product: Product) => {
     if (!uid) throw new Error("Not signed in");
     
-    // Convert id to string for Firestore document ID
     const productId = String(product.id);
     const ref = doc(firestore, "users", uid, "cartItems", productId);
     
-    // Use atomic increment to avoid races and create if missing
+    // ✅ Save to Firebase
     await setDoc(
       ref,
       {
@@ -93,11 +103,25 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         price: product.price,
         img: product.image || "/images/default.jpg",
         qty: increment(1),
+        productId: product.convexProductId || productId, // Store Convex ID
         addedAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       },
       { merge: true }
     );
+
+    // ✅ Sync to Convex if product has Convex ID
+    if (product.convexProductId) {
+      try {
+        await addToCartConvex({
+          userId: uid,
+          productId: product.convexProductId as any,
+          quantity: 1,
+        });
+      } catch (error) {
+        console.error("Error syncing to Convex:", error);
+      }
+    }
     
     toast.success(`${product.name} added to cart`, {
       description: "You can review it in your cart anytime.",
@@ -109,24 +133,62 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const updateQuantity = async (id: number | string, qty: number) => {
     if (!uid) throw new Error("Not signed in");
     
-    // Convert id to string for Firestore document ID
     const productId = String(id);
     const ref = doc(firestore, "users", uid, "cartItems", productId);
     
     if (qty <= 0) {
       await deleteDoc(ref);
+      
+      // Sync to Convex
+      const item = cartItems.find(i => String(i.id) === productId);
+      if (item?.productId) {
+        try {
+          await removeFromCartConvex({
+            userId: uid,
+            productId: item.productId,
+          });
+        } catch (error) {
+          console.error("Error syncing to Convex:", error);
+        }
+      }
     } else {
       await setDoc(ref, { qty, updatedAt: serverTimestamp() }, { merge: true });
+      
+      // Sync to Convex
+      const item = cartItems.find(i => String(i.id) === productId);
+      if (item?.productId) {
+        try {
+          await updateCartConvex({
+            userId: uid,
+            productId: item.productId,
+            quantity: qty,
+          });
+        } catch (error) {
+          console.error("Error syncing to Convex:", error);
+        }
+      }
     }
   };
 
   const removeFromCart = async (id: number | string) => {
     if (!uid) throw new Error("Not signed in");
     
-    // Convert id to string for Firestore document ID
     const productId = String(id);
     const ref = doc(firestore, "users", uid, "cartItems", productId);
     await deleteDoc(ref);
+
+    // Sync to Convex
+    const item = cartItems.find(i => String(i.id) === productId);
+    if (item?.productId) {
+      try {
+        await removeFromCartConvex({
+          userId: uid,
+          productId: item.productId,
+        });
+      } catch (error) {
+        console.error("Error syncing to Convex:", error);
+      }
+    }
   };
 
   const clearCart = async () => {
@@ -136,6 +198,13 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const batch = writeBatch(firestore);
     snap.forEach((d) => batch.delete(d.ref));
     await batch.commit();
+
+    // Sync to Convex
+    try {
+      await clearCartConvex({ userId: uid });
+    } catch (error) {
+      console.error("Error syncing to Convex:", error);
+    }
   };
 
   const getTotalItems = useMemo(

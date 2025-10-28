@@ -34,4 +34,39 @@ export default defineSchema({
   })
     .index("by_admin", ["adminUid"])
     .index("by_admin_email", ["adminEmail"]),
-});
+
+    
+  orders: defineTable({
+    userId: v.string(),
+    userEmail: v.string(),
+    productId: v.id("products"),
+    adminUid: v.string(), // Admin who owns the product
+    quantity: v.number(),
+    totalPrice: v.number(),
+    status: v.string(), // "pending", "processing", "completed", "cancelled"
+    shippingAddress: v.optional(v.string()),
+    orderDate: v.number(),
+  })
+    .index("by_admin", ["adminUid"])
+    .index("by_user", ["userId"])
+    .index("by_product", ["productId"])
+    .index("by_status", ["status"]),
+
+  cart: defineTable({
+    userId: v.string(),
+    productId: v.id("products"),
+    quantity: v.number(),
+    addedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_product", ["productId"])
+    .index("by_user_product", ["userId", "productId"]),
+
+
+
+
+
+
+
+
+  });
