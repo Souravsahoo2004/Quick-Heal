@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
-import {Outfit} from "next/font/google";
+import { Outfit } from "next/font/google";
 import "../globals.css";
 import SellerProvider from "./SellerProvider";
 
-
-
-
-
 export const metadata: Metadata = {
   title: "Quick Heal Admin",
-  description: "QUick Heal app",
+  description: "Quick Heal app",
 };
 
-const outfit = Outfit ({
+const outfit = Outfit({
   subsets: ["latin"],
-  weight:['500']
+  weight: ["500"],
 });
 
 export default function SellerRootLayout({
@@ -24,14 +20,13 @@ export default function SellerRootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={outfit.className}
-      >
-    
-          <SellerProvider>
-        {children}
-       </SellerProvider>
-        
+      <body className={`${outfit.className} bg-gray-50`}>
+        <SellerProvider>
+          {/* 🧱 Wrapper to add spacing below navbar for all Seller pages */}
+          <div className=" pt-28">
+            {children}
+          </div>
+        </SellerProvider>
       </body>
     </html>
   );

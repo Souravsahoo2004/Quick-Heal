@@ -1,6 +1,7 @@
 'use client'
 import React from 'react'
 import Navbar from './_Components/navbar';
+import { ConvexClientProvider } from '../ConvexClientProvider';
 
 function SellerProvider({
   children,
@@ -9,8 +10,10 @@ function SellerProvider({
 }>) {
   return (
     <div>
+      <ConvexClientProvider>
         <Navbar/>
       {children}
+      </ConvexClientProvider>
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { AppProgressBar as ProgressBar } from 'next-nprogress-bar';
 import { CartProvider } from '../../contexts/CartContext';
 import type { ReactNode } from 'react';
 import { SonnerToaster } from '@/components/sonner-toaster';
+import { ConvexClientProvider } from '../ConvexClientProvider';
 
 function Provider({
   children,
@@ -14,12 +15,15 @@ function Provider({
   return (
     <div>
       <div>
-         <Navbar/>
+        
          <div className='pt-16'>
+          <ConvexClientProvider>
           <CartProvider>
+             <Navbar/>
             {children}
             <SonnerToaster />
           </CartProvider>
+          </ConvexClientProvider>
         </div>
       </div>
       <ProgressBar

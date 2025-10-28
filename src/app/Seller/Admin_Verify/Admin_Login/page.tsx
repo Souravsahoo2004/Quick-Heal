@@ -30,7 +30,7 @@ const AdminLoginPage = () => {
           },
           { merge: true }
         );
-        router.push("/"); // or wherever the admin home is
+        router.push("/Seller/Dashboard"); // or wherever the admin home is
       } else {
         setError("Please verify your email before logging in.");
       }
