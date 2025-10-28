@@ -18,7 +18,7 @@ import {
 import { auth, firestore } from "@/lib/firebase";
 
 interface CartItem {
-  id: number;
+  id: number | string; // Updated to support both number and string
   name: string;
   price: number;
   qty: number;
@@ -26,7 +26,7 @@ interface CartItem {
 }
 
 interface Product {
-  id: number;
+  id: number | string; // Updated to support both number and string
   name: string;
   price: number;
   oldPrice: number;
@@ -37,8 +37,8 @@ interface Product {
 interface CartContextType {
   cartItems: CartItem[];
   addToCart: (product: Product) => Promise<void>;
-  updateQuantity: (id: number, qty: number) => Promise<void>;
-  removeFromCart: (id: number) => Promise<void>;
+  updateQuantity: (id: number | string, qty: number) => Promise<void>; // Updated parameter type
+  removeFromCart: (id: number | string) => Promise<void>; // Updated parameter type
   clearCart: () => Promise<void>;
   getTotalItems: () => number;
   getSubtotal: () => number;
@@ -66,7 +66,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const list: CartItem[] = snap.docs.map((d) => {
         const data = d.data() as any;
         return {
-          id: Number(d.id),
+          id: d.id, // Keep as string from Firestore document ID
           name: data.name,
           price: data.price,
           qty: data.qty,
@@ -80,7 +80,11 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const addToCart = async (product: Product) => {
     if (!uid) throw new Error("Not signed in");
-    const ref = doc(firestore, "users", uid, "cartItems", String(product.id));
+    
+    // Convert id to string for Firestore document ID
+    const productId = String(product.id);
+    const ref = doc(firestore, "users", uid, "cartItems", productId);
+    
     // Use atomic increment to avoid races and create if missing
     await setDoc(
       ref,
@@ -94,6 +98,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       },
       { merge: true }
     );
+    
     toast.success(`${product.name} added to cart`, {
       description: "You can review it in your cart anytime.",
       icon: "🛒",
@@ -101,9 +106,13 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   };
 
-  const updateQuantity = async (id: number, qty: number) => {
+  const updateQuantity = async (id: number | string, qty: number) => {
     if (!uid) throw new Error("Not signed in");
-    const ref = doc(firestore, "users", uid, "cartItems", String(id));
+    
+    // Convert id to string for Firestore document ID
+    const productId = String(id);
+    const ref = doc(firestore, "users", uid, "cartItems", productId);
+    
     if (qty <= 0) {
       await deleteDoc(ref);
     } else {
@@ -111,9 +120,12 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const removeFromCart = async (id: number) => {
+  const removeFromCart = async (id: number | string) => {
     if (!uid) throw new Error("Not signed in");
-    const ref = doc(firestore, "users", uid, "cartItems", String(id));
+    
+    // Convert id to string for Firestore document ID
+    const productId = String(id);
+    const ref = doc(firestore, "users", uid, "cartItems", productId);
     await deleteDoc(ref);
   };
 

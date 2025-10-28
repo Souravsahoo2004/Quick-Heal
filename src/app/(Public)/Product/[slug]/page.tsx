@@ -9,9 +9,11 @@ import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Star, ShoppingCart, Zap, ShieldCheck, ArrowRight } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext'
+import { useQuery } from 'convex/react'
+import { api } from '../../../../../convex/_generated/api'
 
 type ProductFull = {
-  id: number
+  id: number | string
   slug: string
   name: string
   price: number
@@ -22,6 +24,8 @@ type ProductFull = {
   reviewCount: number
   images: string[]
   highlights: string[]
+  description?: string
+  offers?: string
 }
 
 const CATALOG: Record<string, ProductFull> = {
@@ -181,9 +185,86 @@ const CATALOG: Record<string, ProductFull> = {
 
 export default function ProductDescriptionPage() {
   const { slug } = useParams<{ slug: string }>()
-  const product = useMemo<ProductFull | null>(() => CATALOG[slug] ?? null, [slug])
   const router = useRouter()
   const { addToCart } = useCart()
+
+  // Fetch all admin products from Convex
+  const adminProducts = useQuery(api.products.getAllProducts)
+
+  // Find product in static catalog or admin products
+  const product = useMemo<ProductFull | null>(() => {
+    // First, try to find in static catalog
+    if (CATALOG[slug]) {
+      return CATALOG[slug]
+    }
+
+    // If not found and admin products are loaded, search there
+    if (adminProducts) {
+      const adminProduct = adminProducts.find(
+        (p) => p.productName.toLowerCase().replace(/\s+/g, '-') === slug
+      )
+
+      if (adminProduct) {
+        // Transform admin product to ProductFull format
+        const discount = adminProduct.discountedPrice 
+          ? Math.round(((adminProduct.price - adminProduct.discountedPrice) / adminProduct.price) * 100)
+          : 0
+
+        const finalPrice = adminProduct.discountedPrice || adminProduct.price
+
+        return {
+          id: adminProduct._id,
+          slug: slug,
+          name: adminProduct.productName,
+          price: finalPrice,
+          oldPrice: adminProduct.price,
+          discount: discount,
+          rating: adminProduct.rating || 4.0,
+          ratingCount: 0,
+          reviewCount: 0,
+          images: adminProduct.imageUrls && adminProduct.imageUrls.length > 0 
+            ? adminProduct.imageUrls 
+            : ['/images/placeholder.png'],
+          highlights: adminProduct.highlightedFeatures || [],
+          description: adminProduct.description,
+          offers: adminProduct.offers,
+        }
+      }
+    }
+
+    return null
+  }, [slug, adminProducts])
+
+  // Get all products for related products section
+  const allProducts = useMemo(() => {
+    const staticProductsList = Object.values(CATALOG)
+    
+    if (!adminProducts) return staticProductsList
+
+    const adminProductsList: ProductFull[] = adminProducts.map((p) => {
+      const discount = p.discountedPrice 
+        ? Math.round(((p.price - p.discountedPrice) / p.price) * 100)
+        : 0
+
+      return {
+        id: p._id,
+        slug: p.productName.toLowerCase().replace(/\s+/g, '-'),
+        name: p.productName,
+        price: p.discountedPrice || p.price,
+        oldPrice: p.price,
+        discount: discount,
+        rating: p.rating || 4.0,
+        ratingCount: 0,
+        reviewCount: 0,
+        images: p.imageUrls && p.imageUrls.length > 0 ? p.imageUrls : ['/images/placeholder.png'],
+        highlights: p.highlightedFeatures || [],
+        description: p.description,
+        offers: p.offers,
+      }
+    })
+
+    return [...staticProductsList, ...adminProductsList]
+  }, [adminProducts])
 
   if (!product) {
     return (
@@ -199,6 +280,7 @@ export default function ProductDescriptionPage() {
 
   const cartShape = {
     id: product.id,
+    slug: product.slug,
     name: product.name,
     price: product.price,
     oldPrice: product.oldPrice ?? product.price,
@@ -228,32 +310,52 @@ export default function ProductDescriptionPage() {
             priority
           />
         </div>
-        <div className="flex gap-2 justify-center">
-          {product.images.slice(1).map((img, index) => (
-            <div
-              key={index}
-              className="relative w-20 h-20 border rounded-lg hover:scale-105 transition-all cursor-pointer bg-white"
-            >
-              <Image src={img} alt={`${product.name} view ${index + 1}`} fill className="object-contain" />
-            </div>
-          ))}
-        </div>
+        {product.images.length > 1 && (
+          <div className="flex gap-2 justify-center">
+            {product.images.slice(1).map((img, index) => (
+              <div
+                key={index}
+                className="relative w-20 h-20 border rounded-lg hover:scale-105 transition-all cursor-pointer bg-white"
+              >
+                <Image src={img} alt={`${product.name} view ${index + 1}`} fill className="object-contain" />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Right: Product Details */}
       <div className="space-y-5">
         <h1 className="text-3xl font-bold text-gray-900">{product.name}</h1>
         <p className="flex items-center gap-2 text-yellow-500">
-          <Star fill="gold" size={18} /> {product.rating} ★ | {product.ratingCount.toLocaleString()} Ratings & {product.reviewCount} Reviews
+          <Star fill="gold" size={18} /> {product.rating.toFixed(1)} ★ 
+          {product.ratingCount > 0 && (
+            <span className="text-gray-600 text-sm">
+              | {product.ratingCount.toLocaleString()} Ratings & {product.reviewCount} Reviews
+            </span>
+          )}
         </p>
 
         <div className="flex items-end gap-3">
           <div className="text-3xl font-semibold text-green-600">₹{product.price.toLocaleString()}</div>
-          {product.oldPrice && (
-            <p className="text-gray-500 text-sm line-through">₹{product.oldPrice.toLocaleString()}</p>
+          {product.oldPrice && product.oldPrice !== product.price && (
+            <>
+              <p className="text-gray-500 text-sm line-through">₹{product.oldPrice.toLocaleString()}</p>
+              {product.discount && product.discount > 0 && (
+                <p className="text-orange-500 text-sm font-semibold">{product.discount}% OFF</p>
+              )}
+            </>
           )}
         </div>
         <p className="text-sm text-gray-700">Inclusive of all taxes</p>
+
+        {/* Description (if available from admin product) */}
+        {product.description && (
+          <div className="mt-4">
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Description</h3>
+            <p className="text-gray-700">{product.description}</p>
+          </div>
+        )}
 
         <div className="flex gap-4 mt-6">
           <Button
@@ -270,27 +372,35 @@ export default function ProductDescriptionPage() {
           </Button>
         </div>
 
-        {/* Offers (static for now) */}
+        {/* Offers */}
         <Card className="mt-6 border-blue-100 shadow-sm">
           <CardHeader>
             <h3 className="text-xl font-semibold text-gray-900">Available Offers</h3>
           </CardHeader>
           <CardContent className="space-y-2 text-gray-700">
-            <p>💳 Bank Offer: 10% off on Axis Bank Credit Card</p>
-            <p>🚚 Free delivery on your first order</p>
-            <p>🔄 Exchange Offer: Up to ₹2,000 off on old phone</p>
+            {product.offers ? (
+              <p>{product.offers}</p>
+            ) : (
+              <>
+                <p>💳 Bank Offer: 10% off on Axis Bank Credit Card</p>
+                <p>🚚 Free delivery on your first order</p>
+                <p>🔄 Exchange Offer: Up to ₹2,000 off on old phone</p>
+              </>
+            )}
           </CardContent>
         </Card>
 
         {/* Highlights */}
-        <div className="mt-6 space-y-3">
-          <h3 className="text-xl font-semibold text-gray-900">Highlights</h3>
-          <ul className="list-disc list-inside text-gray-700 space-y-1">
-            {product.highlights.map((h, i) => (
-              <li key={i}>{h}</li>
-            ))}
-          </ul>
-        </div>
+        {product.highlights.length > 0 && (
+          <div className="mt-6 space-y-3">
+            <h3 className="text-xl font-semibold text-gray-900">Highlights</h3>
+            <ul className="list-disc list-inside text-gray-700 space-y-1">
+              {product.highlights.map((h, i) => (
+                <li key={i}>{h}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Warranty */}
         <div className="flex items-center gap-2 mt-6 text-gray-700">
@@ -303,7 +413,7 @@ export default function ProductDescriptionPage() {
       <div className="col-span-2 mt-12">
         <h2 className="text-2xl font-bold mb-6">Related Products</h2>
         <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6">
-          {Object.values(CATALOG)
+          {allProducts
             .filter((p) => p.slug !== product.slug)
             .slice(0, 4)
             .map((p) => (
