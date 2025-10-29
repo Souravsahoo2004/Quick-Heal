@@ -21,7 +21,7 @@ const menuOption = [
   { name: "Orders", path: "/Seller/Admin_Orders" },
   { name: "buyer", path: "/" },
 
-  { name: "About", path: "/AboutPage" },
+ 
 ];
 
 function Navbar() {

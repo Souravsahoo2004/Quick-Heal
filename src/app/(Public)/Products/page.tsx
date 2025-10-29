@@ -22,78 +22,9 @@ interface Product {
 
 // Your existing static products
 const staticProducts: Product[] = [
-  {
-    id: 1,
-    slug: 'paracetamol-500mg-tablets',
-    name: 'Paracetamol 500mg Tablets',
-    price: 50,
-    oldPrice: 60,
-    discount: 20,
-    image: '/images/paracetamol.png',
-  },
-  {
-    id: 2,
-    slug: 'cough-syrup-quick-relief',
-    name: 'Cough Syrup – Quick Relief',
-    price: 120,
-    oldPrice: 150,
-    discount: 10,
-    image: '/images/cough-syrough.png',
-  },
-  {
-    id: 3,
-    slug: 'vitamin-c-immunity-booster',
-    name: 'Vitamin C Immunity Booster',
-    price: 220,
-    oldPrice: 250,
-    discount: 12,
-    image: '/images/vitaminc-Immunity-booster.png',
-  },
-  {
-    id: 4,
-    slug: 'digital-thermometer-fast-read',
-    name: 'Digital Thermometer – Fast Read',
-    price: 350,
-    oldPrice: 400,
-    discount: 15,
-    image: '/images/digital thermometer.png',
-  },
-  {
-    id: 5,
-    slug: 'common-cold-tablets',
-    name: 'Common Cold Tablets',
-    price: 150,
-    oldPrice: 300,
-    discount: 50,
-    image: '/images/common cold tablets.png',
-  },
-  {
-    id: 6,
-    slug: 'diabetic-care-tablets',
-    name: 'Diabetic Care Tablets',
-    price: 750,
-    oldPrice: 1000,
-    discount: 5,
-    image: '/images/diabetic care tablets.png',
-  },
-  {
-    id: 7,
-    slug: 'nicotine-syrup',
-    name: 'Nicotine Syrup',
-    price: 1550,
-    oldPrice: 2000,
-    discount: 15,
-    image: '/images/nicotic syrough.png',
-  },
-  {
-    id: 8,
-    slug: 'fruit-juice',
-    name: 'Fruit Juice',
-    price: 250,
-    oldPrice: 400,
-    discount: 15,
-    image: '/images/fruit juice1.png',
-  },
+  
+ 
+ 
 ]
 
 const FeaturedProducts: React.FC = () => {

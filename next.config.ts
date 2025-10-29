@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
         pathname: '/api/storage/**',
       },
     ],
+    unoptimized: true, // Disable image optimization to prevent timeout with Convex storage
   },
 };
 

@@ -1,4 +1,3 @@
-// src/app/(Admin)/Admin_Orders/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -11,6 +10,7 @@ import { Package, CheckCircle, XCircle, Clock, Eye } from "lucide-react";
 
 const Admin_Orders: React.FC = () => {
   const [adminUid, setAdminUid] = useState<string | null>(null);
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
@@ -27,21 +27,67 @@ const Admin_Orders: React.FC = () => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setAdminUid(user.uid);
+        setAdminEmail(user.email ?? null);
       } else {
         setAdminUid(null);
+        setAdminEmail(null);
       }
     });
-
     return () => unsubscribe();
   }, []);
 
+  // Send email notification via NodeMailer backend
+  const sendOrderCompletedMail = async ({
+    to,
+    orderId,
+    productName,
+    sellerEmail,
+  }: {
+    to: string;
+    orderId: string;
+    productName: string;
+    sellerEmail: string;
+  }) => {
+    try {
+      await fetch("/api/sendOrderCompletionEmail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to,
+          orderId,
+          productName,
+          sellerEmail,
+        }),
+      });
+    } catch (error) {
+      // Optionally log error or alert
+    }
+  };
+
+  // Updated status update logic
   const handleStatusUpdate = async (
     orderId: Id<"orders">,
-    newStatus: string
+    newStatus: string,
+    order: any // full order record
   ) => {
     try {
       await updateOrderStatus({ orderId, status: newStatus });
       alert(`Order status updated to ${newStatus}`);
+
+      if (
+        newStatus === "completed" &&
+        adminEmail &&
+        order.userEmail &&
+        order.productName
+      ) {
+        // Send mail from current admin (seller) to customer
+        await sendOrderCompletedMail({
+          to: order.userEmail,
+          orderId: order._id,
+          productName: order.productName,
+          sellerEmail: adminEmail,
+        });
+      }
     } catch (error) {
       console.error("Error updating order:", error);
       alert("Failed to update order status");
@@ -103,7 +149,6 @@ const Admin_Orders: React.FC = () => {
               Total Orders: {orders?.length ?? 0}
             </div>
           </div>
-
           {/* Status Filter */}
           <div className="mt-6 flex gap-2 flex-wrap">
             {["all", "pending", "processing", "completed", "cancelled"].map(
@@ -222,7 +267,11 @@ const Admin_Orders: React.FC = () => {
                           <select
                             value={order.status}
                             onChange={(e) =>
-                              handleStatusUpdate(order._id, e.target.value)
+                              handleStatusUpdate(
+                                order._id,
+                                e.target.value,
+                                order
+                              )
                             }
                             className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-green-500"
                           >

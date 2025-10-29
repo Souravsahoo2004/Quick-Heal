@@ -184,12 +184,18 @@ const CATALOG: Record<string, ProductFull> = {
 }
 
 export default function ProductDescriptionPage() {
-  const { slug } = useParams<{ slug: string }>()
+  const params = useParams<{ slug: string }>()
   const router = useRouter()
   const { addToCart } = useCart()
 
+  // Decode the URL slug to handle special characters like commas
+  const slug = decodeURIComponent(params.slug)
+
   // Fetch all admin products from Convex
   const adminProducts = useQuery(api.products.getAllProducts)
+
+  // Check if we're still loading data
+  const isLoading = adminProducts === undefined
 
   // Find product in static catalog or admin products
   const product = useMemo<ProductFull | null>(() => {
@@ -266,6 +272,39 @@ export default function ProductDescriptionPage() {
     return [...staticProductsList, ...adminProductsList]
   }, [adminProducts])
 
+  // Show loading state while data is being fetched
+  if (isLoading) {
+    return (
+      <section className="max-w-7xl mx-auto px-4 py-10">
+        <div className="grid md:grid-cols-2 gap-10">
+          {/* Left side skeleton */}
+          <div className="space-y-4">
+            <div className="w-full h-96 rounded-2xl bg-gray-200 animate-pulse"></div>
+            <div className="flex gap-2 justify-center">
+              <div className="w-20 h-20 rounded-lg bg-gray-200 animate-pulse"></div>
+              <div className="w-20 h-20 rounded-lg bg-gray-200 animate-pulse"></div>
+              <div className="w-20 h-20 rounded-lg bg-gray-200 animate-pulse"></div>
+            </div>
+          </div>
+          
+          {/* Right side skeleton */}
+          <div className="space-y-5">
+            <div className="h-8 bg-gray-200 rounded animate-pulse w-3/4"></div>
+            <div className="h-6 bg-gray-200 rounded animate-pulse w-1/2"></div>
+            <div className="h-10 bg-gray-200 rounded animate-pulse w-1/3"></div>
+            <div className="h-4 bg-gray-200 rounded animate-pulse w-1/4"></div>
+            <div className="flex gap-4 mt-6">
+              <div className="h-12 bg-gray-200 rounded-xl animate-pulse w-40"></div>
+              <div className="h-12 bg-gray-200 rounded-xl animate-pulse w-40"></div>
+            </div>
+            <div className="h-40 bg-gray-200 rounded-lg animate-pulse mt-6"></div>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  // Only show "not found" after data has loaded and product doesn't exist
   if (!product) {
     return (
       <section className="max-w-3xl mx-auto px-4 py-20 text-center">

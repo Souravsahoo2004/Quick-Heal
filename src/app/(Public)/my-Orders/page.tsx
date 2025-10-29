@@ -249,14 +249,7 @@ export default function MyOrders() {
             </CardContent>
 
             <CardFooter className="flex flex-wrap gap-2 border-t pt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => router.push(`/TrackOrder?orderId=${order._id}`)}
-              >
-                <Truck size={16} /> Track Order
-              </Button>
+              
 
               {order.status === "pending" && (
                 <Button
@@ -269,15 +262,7 @@ export default function MyOrders() {
                 </Button>
               )}
 
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => router.push(`/order-details/${order._id}`)}
-              >
-                <Info size={16} /> Details
-              </Button>
-
+              
               <Button
                 variant="outline"
                 size="sm"
