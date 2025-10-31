@@ -3,12 +3,9 @@ import {Outfit} from "next/font/google";
 import "../globals.css";
 import Provider from "./Provider";
 
-
-
-
 export const metadata: Metadata = {
   title: "Quick Heal",
-  description: "QUick Heal app",
+  description: "Quick Heal app",
 };
 
 const outfit = Outfit ({
@@ -23,13 +20,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={outfit.className}
-      >
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      </head>
+      <body className={outfit.className}>
         <Provider>
-          
-        {children}
-       
+          {children}
         </Provider>
       </body>
     </html>

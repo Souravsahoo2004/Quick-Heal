@@ -20,11 +20,16 @@ import { ShoppingCart, IndianRupee, PackageCheck, Users } from "lucide-react";
 
 const Admin_Dashboard: React.FC = () => {
   const [adminUid, setAdminUid] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   const orders = useQuery(
     api.orders.getOrdersByAdmin,
     adminUid ? { adminUid } : "skip"
   );
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -153,16 +158,18 @@ const Admin_Dashboard: React.FC = () => {
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
             Weekly Revenue Overview
           </h2>
-          <div className="w-full h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weeklyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="revenue" fill="#16a34a" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="w-full" style={{ height: '288px' }}>
+            {isMounted && (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weeklyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="revenue" fill="#16a34a" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -171,16 +178,18 @@ const Admin_Dashboard: React.FC = () => {
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
             Weekly Items Sold
           </h2>
-          <div className="w-full h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={weeklyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Line type="monotone" dataKey="items" stroke="#3b82f6" strokeWidth={3} />
-              </LineChart>
-            </ResponsiveContainer>
+          <div className="w-full" style={{ height: '288px' }}>
+            {isMounted && (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={weeklyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="items" stroke="#3b82f6" strokeWidth={3} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 

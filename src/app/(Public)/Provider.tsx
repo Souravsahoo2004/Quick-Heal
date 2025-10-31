@@ -13,19 +13,16 @@ function Provider({
   children: React.ReactNode;
 }>) {
   return (
-    <div>
-      <div>
-        
-         <div className='pt-16'>
-          <ConvexClientProvider>
-          <CartProvider>
-             <Navbar/>
+    <div className="min-h-screen w-full">
+      <ConvexClientProvider>
+        <CartProvider>
+          <Navbar/>
+          <div className="pt-16 px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 w-full max-w-screen-2xl mx-auto">
             {children}
-            <SonnerToaster />
-          </CartProvider>
-          </ConvexClientProvider>
-        </div>
-      </div>
+          </div>
+          <SonnerToaster />
+        </CartProvider>
+      </ConvexClientProvider>
       <ProgressBar
         height="4px"
         color="#0ea5e9"

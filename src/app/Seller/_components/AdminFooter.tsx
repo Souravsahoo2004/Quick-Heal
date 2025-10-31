@@ -42,9 +42,9 @@ export default function Footer() {
             Explore
           </h3>
           <ul className="space-y-3 text-gray-600">
-            <li><Link href="/AboutPage" className="hover:text-[#008FC8] transition">About Us</Link></li>
-            <li><Link href="/Products" className="hover:text-[#008FC8] transition">Shop Medicines</Link></li>
-            <li><Link href="/Doctors" className="hover:text-[#008FC8] transition">Consult Doctor</Link></li>
+            <li><Link href="/Seller/Dashboard" className="hover:text-[#008FC8] transition">DashBoard</Link></li>
+            <li><Link href="/Seller/Management" className="hover:text-[#008FC8] transition">Management</Link></li>
+            <li><Link href="/Seller/Admin_OrdersDoctors" className="hover:text-[#008FC8] transition">Orders</Link></li>
            
           </ul>
         </div>
@@ -84,8 +84,8 @@ export default function Footer() {
           © {new Date().getFullYear()} <span className="text-[#008FC8] font-semibold">Quick Heal</span>. All rights reserved.
         </p>
         <div className="flex gap-4 mt-3 md:mt-0">
-          <Link href="/terms-and-privacy" className="hover:text-[#008FC8] transition">Privacy Policy</Link>
-          <Link href="/terms-and-privacy" className="hover:text-[#008FC8] transition">Terms of Service</Link>
+          <Link href="/Terms&Cond" className="hover:text-[#008FC8] transition">Privacy Policy</Link>
+          <Link href="/Terms&Cond" className="hover:text-[#008FC8] transition">Terms of Service</Link>
         </div>
       </div>
 

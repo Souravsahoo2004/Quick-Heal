@@ -1,9 +1,10 @@
 import React from 'react'
+import Admin_Dashboard from './Dashboard/page'
 
 function page() {
   return (
     <div>
-      <h1>Welcome to admin page seller</h1>
+     <Admin_Dashboard/>
     </div>
   )
 }
