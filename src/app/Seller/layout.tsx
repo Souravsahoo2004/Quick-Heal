@@ -6,6 +6,11 @@ import SellerProvider from "./SellerProvider";
 export const metadata: Metadata = {
   title: "Quick Heal Admin",
   description: "Quick Heal app",
+  icons: {
+    icon: "/logo.svg",          // 👈 this sets your favicon
+    shortcut: "/logo.svg",      // 👈 ensures favicon for bookmarks / iOS
+    apple: "/logo.svg",         // 👈 Apple touch icon (optional but good)
+  },
 };
 
 const outfit = Outfit({
@@ -20,6 +25,10 @@ export default function SellerRootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* optional meta viewport if you want consistency */}
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      </head>
       <body className={`${outfit.className} bg-gray-50`}>
         <SellerProvider>
           {/* Responsive wrapper with adjusted padding for different screen sizes */}
