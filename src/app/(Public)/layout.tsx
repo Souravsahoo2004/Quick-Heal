@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
-import {Outfit} from "next/font/google";
+import { Outfit } from "next/font/google";
 import "../globals.css";
 import Provider from "./Provider";
 
 export const metadata: Metadata = {
   title: "Quick Heal",
   description: "Quick Heal app",
+  icons: {
+    icon: "/logo.svg", // 👈 Path relative to public folder
+  },
 };
 
-const outfit = Outfit ({
+const outfit = Outfit({
   subsets: ["latin"],
-  weight:['500']
+  weight: ["500"],
 });
 
 export default function RootLayout({
@@ -24,9 +27,7 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </head>
       <body className={outfit.className}>
-        <Provider>
-          {children}
-        </Provider>
+        <Provider>{children}</Provider>
       </body>
     </html>
   );
