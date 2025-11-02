@@ -2,7 +2,8 @@
 import React from 'react'
 import Navbar from './_Components/navbar';
 import { ConvexClientProvider } from '../ConvexClientProvider';
-import AdminFooter from './_Components/AdminFooter';
+
+import Footer from './_Components/AdminFooter';
 
 function SellerProvider({
   children,
@@ -16,7 +17,7 @@ function SellerProvider({
         <main className="flex-grow">
           {children}
         </main>
-        <AdminFooter/>
+        <Footer/>
       </ConvexClientProvider>
     </div>
   )
