@@ -1,9 +1,13 @@
 'use client'
 import React from 'react'
-import Navbar from './_Components/navbar';
+
 import { ConvexClientProvider } from '../ConvexClientProvider';
 
-import Footer from './_Components/AdminFooter';
+
+import Admin_Navbar from './_Components/navbar';
+import Admin_Footer from './_Components/AdminFooter';
+
+
 
 function SellerProvider({
   children,
@@ -13,11 +17,11 @@ function SellerProvider({
   return (
     <div className="flex flex-col min-h-screen">
       <ConvexClientProvider>
-        <Navbar/>
+       <Admin_Navbar/>
         <main className="flex-grow">
           {children}
         </main>
-        <Footer/>
+      <Admin_Footer/>
       </ConvexClientProvider>
     </div>
   )

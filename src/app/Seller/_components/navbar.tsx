@@ -22,7 +22,7 @@ const menuOption = [
   { name: "buyer", path: "/" },
 ];
 
-function Navbar() {
+function Admin_Navbar() {
   const [user, setUser] = useState<User | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -227,4 +227,4 @@ function Navbar() {
   );
 }
 
-export default Navbar;
+export default Admin_Navbar;

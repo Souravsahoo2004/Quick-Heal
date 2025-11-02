@@ -3,7 +3,7 @@ import { FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn } from "react-icons/f
 import { MdEmail, MdLocationOn, MdPhone } from "react-icons/md";
 import Link from "next/link";
 
-export default function Footer() {
+export default function Admin_Footer() {
   return (
     <footer className="relative bg-[#f9fbfd] border-t border-gray-200 overflow-hidden">
       {/* Gradient Glow */}
