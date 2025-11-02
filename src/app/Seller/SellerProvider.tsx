@@ -4,8 +4,8 @@ import React from 'react'
 import { ConvexClientProvider } from '../ConvexClientProvider';
 
 
-import Admin_Navbar from './_Components/navbar';
-import Admin_Footer from './_Components/AdminFooter';
+import Admin_Navbar from './_Components/Admin_Navbar';
+import Admin_Footer from './_Components/Admin_Footer';
 
 
 
