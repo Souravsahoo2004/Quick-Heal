@@ -63,9 +63,25 @@ export default defineSchema({
     .index("by_user_product", ["userId", "productId"]),
 
 
+    addresses: defineTable({
+    userId: v.string(),
+    name: v.string(),
+    phone: v.string(),
+    addressLine1: v.string(),
+    addressLine2: v.optional(v.string()),
+    city: v.string(),
+    state: v.string(),
+    pincode: v.string(),
+    isDefault: v.boolean(),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+    locationType: v.optional(v.union(v.literal("manual"), v.literal("auto"))),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_default", ["userId", "isDefault"]),
 
-
-
+ 
 
 
 

@@ -1,4 +1,3 @@
-// src/app/(Public)/Orders/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -7,23 +6,45 @@ import { Button } from "@/components/ui/button";
 import { Package, MapPin, FileText, Truck } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useRouter } from "next/navigation";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
+import { Id } from "convex/_generated/dataModel";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import type { Address } from "@/types/cart";
+
+interface ConvexAddress {
+  _id: Id<"addresses">;
+  _creationTime: number;
+  userId: string;
+  name: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  pincode: string;
+  isDefault: boolean;
+  latitude?: number;
+  longitude?: number;
+  locationType?: "manual" | "auto";
+  createdAt: number;
+}
 
 export default function OrderPage() {
   const { cartItems, getSubtotal, clearCart } = useCart();
   const router = useRouter();
 
-  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [selectedAddressId, setSelectedAddressId] = useState<Id<"addresses"> | null>(null);
   const [isPlacingOrder, setIsPlacingOrder] = useState<boolean>(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  // ✅ Convex mutation
+  // ✅ Convex queries and mutations
+  const selectedAddress = useQuery(
+    api.addresses.getAddressById,
+    selectedAddressId ? { addressId: selectedAddressId } : "skip"
+  ) as ConvexAddress | undefined | null;
+
   const createOrder = useMutation(api.orders.createOrder);
 
   const subtotal = getSubtotal();
@@ -45,32 +66,38 @@ export default function OrderPage() {
     return () => unsubscribe();
   }, [router]);
 
-  // Load selected address
+  // Load selected address ID from localStorage
   useEffect(() => {
     try {
-      const selectedAddressId = localStorage.getItem("selectedAddressId");
-      const savedAddresses = localStorage.getItem("userAddresses");
+      const addressId = localStorage.getItem("selectedAddressId");
 
-      if (!selectedAddressId || !savedAddresses) {
+      if (!addressId) {
+        console.log("No address ID found in localStorage");
         router.push("/Checkout");
         return;
       }
 
-      const addresses: Address[] = JSON.parse(savedAddresses);
-      const selectedAddr = addresses.find((addr) => addr.id === selectedAddressId);
-
-      if (!selectedAddr) {
-        router.push("/Checkout");
-        return;
-      }
-
-      setSelectedAddress(selectedAddr);
-      setIsLoading(false);
+      console.log("Loading address ID:", addressId);
+      setSelectedAddressId(addressId as Id<"addresses">);
     } catch (error) {
-      console.error("Error loading address:", error);
+      console.error("Error loading address ID:", error);
       router.push("/Checkout");
     }
   }, [router]);
+
+  // ✅ FIX: Check if address query returned null (not found) - only after query has completed
+  useEffect(() => {
+    // selectedAddress will be:
+    // - undefined while loading
+    // - null if not found
+    // - ConvexAddress object if found
+    
+    if (selectedAddressId && selectedAddress === null) {
+      console.error("Address not found in Convex - redirecting to Checkout");
+      alert("Selected address not found. Please select an address again.");
+      router.push("/Checkout");
+    }
+  }, [selectedAddressId, selectedAddress, router]);
 
   const handlePlaceOrder = async () => {
     try {
@@ -80,7 +107,10 @@ export default function OrderPage() {
         throw new Error("Missing required information");
       }
 
-      const fullAddress = `${selectedAddress.addressLine1}, ${selectedAddress.addressLine2 || ''}, ${selectedAddress.city}, ${selectedAddress.state} - ${selectedAddress.pincode}`;
+      // ✅ Build full address string from Convex address
+      const fullAddress = `${selectedAddress.addressLine1}${
+        selectedAddress.addressLine2 ? ', ' + selectedAddress.addressLine2 : ''
+      }, ${selectedAddress.city}, ${selectedAddress.state} - ${selectedAddress.pincode}`;
 
       // ✅ Create orders in Convex for items that have productId
       const orderPromises = cartItems
@@ -147,13 +177,30 @@ export default function OrderPage() {
               img: item.img,
             })),
             
-            // Address
-            address: selectedAddress,
+            // Address - convert Convex address to expected format
+            address: {
+              id: selectedAddress._id,
+              name: selectedAddress.name,
+              phone: selectedAddress.phone,
+              addressLine1: selectedAddress.addressLine1,
+              addressLine2: selectedAddress.addressLine2,
+              city: selectedAddress.city,
+              state: selectedAddress.state,
+              pincode: selectedAddress.pincode,
+              isDefault: selectedAddress.isDefault,
+            },
             
             // Pricing
             subtotal: subtotal,
             delivery: delivery,
             total: total,
+            
+            // Location data (optional)
+            locationData: selectedAddress.latitude && selectedAddress.longitude ? {
+              latitude: selectedAddress.latitude,
+              longitude: selectedAddress.longitude,
+              locationType: selectedAddress.locationType,
+            } : undefined,
           }),
         });
 
@@ -175,6 +222,9 @@ export default function OrderPage() {
       // Clear cart after successful order
       await clearCart();
 
+      // Clear selected address from localStorage
+      localStorage.removeItem("selectedAddressId");
+
       alert(
         `Order placed successfully! 🎉\n\n` +
         `Order Number: ${orderNumber}\n\n` +
@@ -192,19 +242,24 @@ export default function OrderPage() {
     }
   };
 
-  if (isLoading) {
+  // ✅ FIX: Show loading only when we have an address ID but address is still undefined (loading)
+  const isLoadingAddress = selectedAddressId !== null && selectedAddress === undefined;
+
+  if (isLoadingAddress) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
         <div className="animate-spin h-8 w-8 border-b-2 border-blue-600 rounded-full"></div>
-        <p className="mt-3 text-gray-600">Loading...</p>
+        <p className="mt-3 text-gray-600">Loading order details...</p>
       </div>
     );
   }
 
-  if (!selectedAddress) {
+  // If no address ID or address not found, don't render (will redirect)
+  if (!selectedAddressId || !selectedAddress) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>No address selected, redirecting...</p>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-b-2 border-blue-600 rounded-full"></div>
+        <p className="mt-3 text-gray-600">Redirecting...</p>
       </div>
     );
   }
@@ -265,13 +320,31 @@ export default function OrderPage() {
               <div className="flex gap-3">
                 <MapPin className="w-5 h-5 text-blue-500 mt-1" />
                 <div>
-                  <p className="font-medium">{selectedAddress.name}</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="font-medium">{selectedAddress.name}</p>
+                    {selectedAddress.locationType && (
+                      <span className={`text-xs px-2 py-0.5 rounded ${
+                        selectedAddress.locationType === 'auto' 
+                          ? 'bg-purple-100 text-purple-600' 
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {selectedAddress.locationType === 'auto' ? '📍 GPS' : '✏️ Manual'}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-gray-600">{selectedAddress.phone}</p>
                   <p className="text-sm text-gray-600">
-                    {selectedAddress.addressLine1},{" "}
-                    {selectedAddress.addressLine2 && `${selectedAddress.addressLine2}, `}
+                    {selectedAddress.addressLine1}
+                    {selectedAddress.addressLine2 && `, ${selectedAddress.addressLine2}`}
+                  </p>
+                  <p className="text-sm text-gray-600">
                     {selectedAddress.city}, {selectedAddress.state} - {selectedAddress.pincode}
                   </p>
+                  {selectedAddress.latitude && selectedAddress.longitude && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      📍 Coordinates: {selectedAddress.latitude.toFixed(4)}, {selectedAddress.longitude.toFixed(4)}
+                    </p>
+                  )}
                 </div>
               </div>
               <Button

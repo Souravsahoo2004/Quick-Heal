@@ -1,4 +1,3 @@
-// src/app/(Public)/Checkout/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -9,28 +8,54 @@ import { MapPin, Plus, Edit, Trash2, Navigation, CheckCircle, ShoppingCart } fro
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { useCart } from '@/contexts/CartContext'; // ✅ Use CartContext instead of Convex
-import type { CartItem, Address } from '@/types/cart';
+import { useCart } from '@/contexts/CartContext';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from 'convex/_generated/api';
+import { Id } from 'convex/_generated/dataModel';
 
 interface LocationCoords {
   latitude: number;
   longitude: number;
 }
 
+interface ConvexAddress {
+  _id: Id<"addresses">;
+  _creationTime: number;
+  userId: string;
+  name: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  pincode: string;
+  isDefault: boolean;
+  latitude?: number;
+  longitude?: number;
+  locationType?: "manual" | "auto";
+  createdAt: number;
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cartItems, getSubtotal } = useCart(); // ✅ Get cart from context
-  
-  const [addresses, setAddresses] = useState<Address[]>([]);
-  const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
+  const { cartItems, getSubtotal } = useCart();
+
+  const [selectedAddress, setSelectedAddress] = useState<Id<"addresses"> | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
-  const [locationPermission, setLocationPermission] = useState<'pending' | 'granted' | 'denied'>('pending');
   const [currentLocation, setCurrentLocation] = useState<LocationCoords | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+
+  // Convex hooks
+  const addresses = useQuery(
+    api.addresses.getUserAddresses,
+    userId ? { userId } : "skip"
+  );
+  const addAddressMutation = useMutation(api.addresses.addAddress);
+  const deleteAddressMutation = useMutation(api.addresses.deleteAddress);
+  const setDefaultMutation = useMutation(api.addresses.setDefaultAddress);
 
   // Firebase auth listener
   useEffect(() => {
@@ -48,38 +73,36 @@ export default function CheckoutPage() {
     return () => unsubscribe();
   }, [router]);
 
-  // Load addresses from localStorage
+  // Show location modal if no addresses exist
   useEffect(() => {
-    const savedAddresses = localStorage.getItem('userAddresses');
-    if (savedAddresses) {
-      const parsedAddresses = JSON.parse(savedAddresses);
-      setAddresses(parsedAddresses);
-      
-      const defaultAddress = parsedAddresses.find((addr: Address) => addr.isDefault);
-      if (defaultAddress) {
-        setSelectedAddress(defaultAddress.id);
+    if (addresses !== undefined) {
+      if (addresses.length === 0) {
+        setShowLocationModal(true);
+      } else {
+        const defaultAddr = addresses.find(addr => addr.isDefault);
+        if (defaultAddr) {
+          setSelectedAddress(defaultAddr._id);
+        } else if (addresses.length > 0) {
+          setSelectedAddress(addresses[0]._id);
+        }
       }
-    } else {
-      setShowLocationModal(true);
     }
-  }, []);
+  }, [addresses]);
 
   const requestLocation = () => {
     setIsLoadingLocation(true);
-    
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           setCurrentLocation({ latitude, longitude });
-          setLocationPermission('granted');
           setIsLoadingLocation(false);
           setShowLocationModal(false);
           setShowAddForm(true);
         },
         (error) => {
           console.error('Error getting location:', error);
-          setLocationPermission('denied');
           setIsLoadingLocation(false);
           setShowLocationModal(false);
           setShowAddForm(true);
@@ -91,80 +114,93 @@ export default function CheckoutPage() {
         }
       );
     } else {
-      setLocationPermission('denied');
       setIsLoadingLocation(false);
       setShowLocationModal(false);
       setShowAddForm(true);
     }
   };
 
-  const saveAddresses = (newAddresses: Address[]) => {
-    setAddresses(newAddresses);
-    localStorage.setItem('userAddresses', JSON.stringify(newAddresses));
-  };
-
-  const addAddress = (newAddress: Omit<Address, 'id'>) => {
-    const addressWithId = {
-      ...newAddress,
-      id: Date.now().toString()
-    };
-    
-    const updatedAddresses = [...addresses, addressWithId];
-    saveAddresses(updatedAddresses);
-    
-    if (addressWithId.isDefault || addresses.length === 0) {
-      setSelectedAddress(addressWithId.id);
-    }
-    
-    setShowAddForm(false);
-  };
-
-  const deleteAddress = (addressId: string) => {
-    const updatedAddresses = addresses.filter(addr => addr.id !== addressId);
-    saveAddresses(updatedAddresses);
-    
-    if (selectedAddress === addressId) {
-      setSelectedAddress(updatedAddresses.length > 0 ? updatedAddresses[0].id : null);
-    }
-  };
-
-  const setDefaultAddress = (addressId: string) => {
-    const updatedAddresses = addresses.map(addr => ({
-      ...addr,
-      isDefault: addr.id === addressId
-    }));
-    saveAddresses(updatedAddresses);
-    setSelectedAddress(addressId);
-  };
-
-  const calculateTotal = () => {
-    return getSubtotal(); // ✅ Use getSubtotal from context
-  };
-
-  // ✅ Save address to localStorage and proceed to Orders page
-  const proceedToOrder = () => {
-    if (!selectedAddress) {
-      alert('Please select a delivery address');
+  const addAddress = async (newAddress: {
+    name: string;
+    phone: string;
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    state: string;
+    pincode: string;
+    isDefault: boolean;
+  }) => {
+    if (!userId) {
+      alert('Please log in to add an address');
       return;
     }
 
-    if (!userId || !userEmail) {
-      alert('Please log in to place an order');
-      router.push('/login');
-      return;
-    }
+    try {
+      const addressId = await addAddressMutation({
+        userId,
+        name: newAddress.name,
+        phone: newAddress.phone,
+        addressLine1: newAddress.addressLine1,
+        addressLine2: newAddress.addressLine2,
+        city: newAddress.city,
+        state: newAddress.state,
+        pincode: newAddress.pincode,
+        isDefault: newAddress.isDefault || (addresses?.length === 0),
+        latitude: currentLocation?.latitude,
+        longitude: currentLocation?.longitude,
+      });
 
-    if (cartItems.length === 0) {
-      alert('Your cart is empty');
-      return;
+      setSelectedAddress(addressId as Id<"addresses">);
+      setShowAddForm(false);
+      setCurrentLocation(null);
+    } catch (error) {
+      console.error('Error adding address:', error);
+      alert('Failed to add address. Please try again.');
     }
-
-    // Save selected address ID to localStorage for Orders page
-    localStorage.setItem('selectedAddressId', selectedAddress);
-    
-    // Navigate to Orders page for final confirmation
-    router.push('/Orders');
   };
+
+  const deleteAddress = async (addressId: Id<"addresses">) => {
+    try {
+      await deleteAddressMutation({ addressId });
+
+      if (selectedAddress === addressId && addresses && addresses.length > 1) {
+        const remainingAddresses = addresses.filter(addr => addr._id !== addressId);
+        if (remainingAddresses.length > 0) {
+          setSelectedAddress(remainingAddresses[0]._id);
+        } else {
+          setSelectedAddress(null);
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting address:', error);
+      alert('Failed to delete address. Please try again.');
+    }
+  };
+
+  const setDefaultAddress = async (addressId: Id<"addresses">) => {
+    if (!userId) return;
+
+    try {
+      await setDefaultMutation({ addressId, userId });
+      setSelectedAddress(addressId);
+    } catch (error) {
+      console.error('Error setting default address:', error);
+      alert('Failed to set default address. Please try again.');
+    }
+  };
+
+  const calculateTotal = () => getSubtotal();
+
+  if (addresses === undefined) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading addresses...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4">
@@ -211,9 +247,12 @@ export default function CheckoutPage() {
       )}
 
       {showAddForm && (
-        <AddressForm 
-          onAdd={addAddress} 
-          onCancel={() => setShowAddForm(false)}
+        <AddressForm
+          onAdd={addAddress}
+          onCancel={() => {
+            setShowAddForm(false);
+            setCurrentLocation(null);
+          }}
           currentLocation={currentLocation}
         />
       )}
@@ -247,12 +286,12 @@ export default function CheckoutPage() {
             ) : (
               addresses.map((address) => (
                 <AddressCard
-                  key={address.id}
+                  key={address._id}
                   address={address}
-                  isSelected={selectedAddress === address.id}
-                  onSelect={() => setSelectedAddress(address.id)}
-                  onSetDefault={() => setDefaultAddress(address.id)}
-                  onDelete={() => deleteAddress(address.id)}
+                  isSelected={selectedAddress === address._id}
+                  onSelect={() => setSelectedAddress(address._id)}
+                  onSetDefault={() => setDefaultAddress(address._id)}
+                  onDelete={() => deleteAddress(address._id)}
                 />
               ))
             )}
@@ -260,13 +299,39 @@ export default function CheckoutPage() {
 
           {addresses.length > 0 && selectedAddress && (
             <CardFooter>
-              <Button
-                onClick={proceedToOrder}
-                disabled={isPlacingOrder || cartItems.length === 0} // ✅ Fixed: cartItems is always defined
-                className="w-full bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
-              >
-                {cartItems.length === 0 ? 'Cart is Empty' : `Proceed to Order (₹${calculateTotal().toFixed(2)})`}
-              </Button>
+              {cartItems.length === 0 ? (
+                <Button disabled className="w-full bg-gray-400 text-white cursor-not-allowed">
+                  Cart is Empty
+                </Button>
+              ) : (
+                <a
+                  href="/Orders"
+                  onClick={(e) => {
+                    if (!selectedAddress) {
+                      e.preventDefault();
+                      alert('Please select a delivery address');
+                      return;
+                    }
+                    if (!userId || !userEmail) {
+                      e.preventDefault();
+                      alert('Please log in to place an order');
+                      window.location.href = '/login';
+                      return;
+                    }
+                    if (cartItems.length === 0) {
+                      e.preventDefault();
+                      alert('Your cart is empty');
+                      return;
+                    }
+                    localStorage.setItem('selectedAddressId', selectedAddress.toString());
+                  }}
+                  className="block w-full"
+                >
+                  <Button className="w-full bg-green-600 hover:bg-green-700 text-white">
+                    Proceed to Order (₹{calculateTotal().toFixed(2)})
+                  </Button>
+                </a>
+              )}
             </CardFooter>
           )}
         </Card>
@@ -344,9 +409,8 @@ export default function CheckoutPage() {
   );
 }
 
-// Address Card Component (unchanged)
 interface AddressCardProps {
-  address: Address;
+  address: ConvexAddress;
   isSelected: boolean;
   onSelect: () => void;
   onSetDefault: () => void;
@@ -370,6 +434,15 @@ function AddressCard({ address, isSelected, onSelect, onSetDefault, onDelete }: 
                 Default
               </span>
             )}
+            {address.locationType && (
+              <span className={`text-xs px-2 py-1 rounded ${
+                address.locationType === 'auto' 
+                  ? 'bg-purple-100 text-purple-600' 
+                  : 'bg-gray-100 text-gray-600'
+              }`}>
+                {address.locationType === 'auto' ? '📍 Auto' : '✏️ Manual'}
+              </span>
+            )}
             {isSelected && <CheckCircle className="text-blue-500 w-4 h-4" />}
           </div>
           <p className="text-sm text-gray-600">{address.phone}</p>
@@ -380,8 +453,13 @@ function AddressCard({ address, isSelected, onSelect, onSetDefault, onDelete }: 
           <p className="text-sm text-gray-600">
             {address.city}, {address.state} - {address.pincode}
           </p>
+          {address.latitude && address.longitude && (
+            <p className="text-xs text-gray-400 mt-1">
+              📍 GPS: {address.latitude.toFixed(4)}, {address.longitude.toFixed(4)}
+            </p>
+          )}
         </div>
-        
+
         <div className="flex gap-2 ml-4">
           {!address.isDefault && (
             <Button
@@ -401,7 +479,9 @@ function AddressCard({ address, isSelected, onSelect, onSetDefault, onDelete }: 
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
-              onDelete();
+              if (confirm('Are you sure you want to delete this address?')) {
+                onDelete();
+              }
             }}
             className="text-red-600 hover:text-red-700"
           >
@@ -413,15 +493,23 @@ function AddressCard({ address, isSelected, onSelect, onSetDefault, onDelete }: 
   );
 }
 
-// Address Form Component (unchanged)
 interface AddressFormProps {
-  onAdd: (address: Omit<Address, 'id'>) => void;
+  onAdd: (address: {
+    name: string;
+    phone: string;
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    state: string;
+    pincode: string;
+    isDefault: boolean;
+  }) => void;
   onCancel: () => void;
   currentLocation?: LocationCoords | null;
 }
 
 function AddressForm({ onAdd, onCancel, currentLocation }: AddressFormProps) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = React.useState({
     name: '',
     phone: '',
     addressLine1: '',
@@ -429,25 +517,39 @@ function AddressForm({ onAdd, onCancel, currentLocation }: AddressFormProps) {
     city: '',
     state: '',
     pincode: '',
-    isDefault: false
+    isDefault: false,
   });
-  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [isLoadingLocation, setIsLoadingLocation] = React.useState(false);
+
+  React.useEffect(() => {
+    if (currentLocation) {
+      setFormData((prev) => ({
+        ...prev,
+        addressLine1: `Lat: ${currentLocation.latitude.toFixed(
+          4
+        )}, Lng: ${currentLocation.longitude.toFixed(4)}`,
+        city: 'Auto-detected City',
+        state: 'Auto-detected State',
+        pincode: '000000',
+      }));
+    }
+  }, [currentLocation]);
 
   const useCurrentLocation = () => {
     setIsLoadingLocation(true);
-    
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           setIsLoadingLocation(false);
-          
-          setFormData(prev => ({
+
+          setFormData((prev) => ({
             ...prev,
             addressLine1: `Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`,
             city: 'Auto-detected City',
             state: 'Auto-detected State',
-            pincode: '000000'
+            pincode: '000000',
           }));
         },
         (error) => {
@@ -458,7 +560,7 @@ function AddressForm({ onAdd, onCancel, currentLocation }: AddressFormProps) {
         {
           enableHighAccuracy: true,
           timeout: 15000,
-          maximumAge: 10000
+          maximumAge: 10000,
         }
       );
     } else {
@@ -469,8 +571,18 @@ function AddressForm({ onAdd, onCancel, currentLocation }: AddressFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.name && formData.phone && formData.addressLine1 && formData.city && formData.state && formData.pincode) {
-      onAdd(formData);
+    if (
+      formData.name &&
+      formData.phone &&
+      formData.addressLine1 &&
+      formData.city &&
+      formData.state &&
+      formData.pincode
+    ) {
+      onAdd({
+        ...formData,
+        addressLine2: formData.addressLine2 || undefined,
+      });
     }
   };
 
@@ -482,21 +594,29 @@ function AddressForm({ onAdd, onCancel, currentLocation }: AddressFormProps) {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
-            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-700 mb-2">Quick fill with location:</p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={useCurrentLocation}
-                disabled={isLoadingLocation}
-                className="w-full"
-              >
-                <Navigation className="w-4 h-4 mr-2" />
-                {isLoadingLocation ? 'Getting Location...' : 'Use Current Location'}
-              </Button>
-            </div>
-
+            {!currentLocation && (
+              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-700 mb-2">Quick fill with location:</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={useCurrentLocation}
+                  disabled={isLoadingLocation}
+                  className="w-full"
+                >
+                  <Navigation className="w-4 h-4 mr-2" />
+                  {isLoadingLocation ? 'Getting Location...' : 'Use Current Location'}
+                </Button>
+              </div>
+            )}
+            {currentLocation && (
+              <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                <p className="text-sm text-green-700">
+                  ✓ Location captured: {currentLocation.latitude.toFixed(4)}, {currentLocation.longitude.toFixed(4)}
+                </p>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
               <Input
@@ -506,7 +626,6 @@ function AddressForm({ onAdd, onCancel, currentLocation }: AddressFormProps) {
                 required
               />
             </div>
-            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
               <Input
@@ -517,7 +636,6 @@ function AddressForm({ onAdd, onCancel, currentLocation }: AddressFormProps) {
                 required
               />
             </div>
-            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Address Line 1 *</label>
               <Input
@@ -527,7 +645,6 @@ function AddressForm({ onAdd, onCancel, currentLocation }: AddressFormProps) {
                 required
               />
             </div>
-            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Address Line 2</label>
               <Input
@@ -536,7 +653,6 @@ function AddressForm({ onAdd, onCancel, currentLocation }: AddressFormProps) {
                 placeholder="Area, Landmark (Optional)"
               />
             </div>
-            
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
@@ -557,7 +673,6 @@ function AddressForm({ onAdd, onCancel, currentLocation }: AddressFormProps) {
                 />
               </div>
             </div>
-            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Pincode *</label>
               <Input
@@ -569,7 +684,6 @@ function AddressForm({ onAdd, onCancel, currentLocation }: AddressFormProps) {
                 required
               />
             </div>
-            
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -583,7 +697,6 @@ function AddressForm({ onAdd, onCancel, currentLocation }: AddressFormProps) {
               </label>
             </div>
           </CardContent>
-          
           <CardFooter className="flex gap-3">
             <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
               Cancel
