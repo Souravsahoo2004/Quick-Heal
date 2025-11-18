@@ -51,7 +51,7 @@ export default function MyOrders() {
         setUserId(user.uid);
       } else {
         setUserId(null);
-        router.push('/login');
+        router.push('/Verify/login');
       }
     });
     return () => unsubscribe();
@@ -131,7 +131,7 @@ export default function MyOrders() {
           <Package className="w-16 h-16 mx-auto mb-4 text-gray-400" />
           <h2 className="text-xl font-semibold mb-2">Please Log In</h2>
           <p className="text-gray-600 mb-4">Sign in to view your orders</p>
-          <Button onClick={() => router.push('/login')} className="w-full">
+          <Button onClick={() => router.push('/Verify/login')} className="w-full">
             Go to Login
           </Button>
         </Card>
