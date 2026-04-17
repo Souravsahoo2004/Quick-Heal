@@ -5,6 +5,13 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import React, { useState, ChangeEvent, FormEvent } from 'react'
 import { auth } from '@/lib/firebase' // import Firebase Auth client
+import  {useEffect } from 'react'
+import { onAuthStateChanged, User } from 'firebase/auth'
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useRouter } from 'next/navigation'
+import { api } from 'convex/_generated/api'
+import { useQuery } from "convex/react";
 
 interface AppointmentForm {
   name: string
@@ -22,6 +29,95 @@ interface AppointmentDetails {
 }
 
 const DoctorAppointmentSection: React.FC = () => {
+
+
+const [doctors, setDoctors] = useState<Doctor[]>([]);
+const uniqueLocations = [...new Set(doctors.map(d => d.location))];
+  const [location, setLocation] = useState("");
+const [specialization, setSpecialization] = useState("");
+const [filteredDoctors, setFilteredDoctors] = useState<any[]>([]);
+const [pwd, setPwd] = useState(false);
+const [user, setUser] = useState<User | null>(null);
+const router = useRouter();
+const doctorsData = useQuery(api.doctors.getDoctors);
+
+type Doctor = {
+  _id?: string;
+  name: string;
+  specialization: string;
+  location: string;
+  imageUrl?: string;
+  locationImageUrl?: string;
+  rating: number;
+  reviews: number;
+  fees: number;
+};
+
+type DoctorsData = {
+  [key: string]: Doctor[];
+};
+
+
+
+
+
+
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    setUser(currentUser)
+
+    // Auto-fill email in form
+    if (currentUser?.email) {
+      setForm((prev) => ({
+        ...prev,
+        email: currentUser.email || ''
+      }))
+    }
+  })
+
+  return () => unsubscribe()
+}, [])
+
+
+useEffect(() => {
+  if (location && specialization) {
+    const filtered = doctors.filter(
+      (d) =>
+        d.location === location &&
+        d.specialization === specialization
+    );
+    setFilteredDoctors(filtered);
+  } else {
+    setFilteredDoctors([]);
+  }
+}, [location, specialization, doctors]);
+
+useEffect(() => {
+  if (doctorsData) {
+    setDoctors(doctorsData as Doctor[]);
+  }
+}, [doctorsData]);
+
+
+useEffect(() => {
+  if (!doctorsData || doctors.length === 0) return;
+
+  const merged = doctors.map((doc) => {
+    const convexDoc = doctorsData.find(
+      (d: any) => d.name === doc.name // match by name (or better use id)
+    );
+
+    return {
+      ...doc,
+      imageUrl: convexDoc?.imageUrl || "/default-doctor.png",
+      
+    };
+  });
+console.log("Convex Doctors:", doctorsData);
+  setDoctors(merged);
+}, [doctorsData]);
+
+
   const [form, setForm] = useState<AppointmentForm>({
     name: '',
     email: '',
@@ -29,6 +125,9 @@ const DoctorAppointmentSection: React.FC = () => {
     doctor: '',
     message: '',
   })
+
+
+
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [isSuccess, setIsSuccess] = useState<boolean>(false)
   const [appointmentDetails, setAppointmentDetails] = useState<AppointmentDetails | null>(null)
@@ -46,14 +145,31 @@ const DoctorAppointmentSection: React.FC = () => {
 
     try {
       // Read current user at submit time
-      const u = auth.currentUser
-      if (!u) {
-        setError('Please log in to book an appointment.')
-        return
-      }
+     const u = user
+
+if (!u) {
+  setError('Please log in to book an appointment.')
+  setIsSubmitting(false) // IMPORTANT fix
+  return
+}
+
+if (!form.doctor) {
+  setError("Please select a doctor");
+  setIsSubmitting(false);
+  return;
+}
+
 
       // Include uid so server can store userId in Firestore
-      const payload = { ...form, uid: u.uid }
+   const payload = {
+  ...form,
+  doctorId: form.doctor, // ✅ send ID
+  email: u.email,
+  uid: u.uid,
+  location,
+  specialization,
+  pwd,
+}
 
       // Post to App Router route handler (/api/appointments)
       const response = await fetch('/api/appointment', {
@@ -87,6 +203,10 @@ const DoctorAppointmentSection: React.FC = () => {
           doctor: '',
           message: '',
         })
+        setLocation("")
+setSpecialization("")
+setFilteredDoctors([])
+setPwd(false)
 
         setTimeout(() => {
           setIsSuccess(false)
@@ -231,6 +351,30 @@ const DoctorAppointmentSection: React.FC = () => {
                   </div>
                 )}
 
+
+
+{!user && (
+  <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6 text-center">
+    <p className="text-yellow-700 mb-3">
+      ⚠️ Please login to book an appointment
+    </p>
+    <Button
+      onClick={() => window.location.href = '/Verify/login'}
+      className="bg-yellow-500 hover:bg-yellow-600 text-white"
+    >
+      🔐 Go to Login
+    </Button>
+  </div>
+)}
+
+
+
+
+
+
+
+
+
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {/* Full Name */}
                   <div>
@@ -251,20 +395,66 @@ const DoctorAppointmentSection: React.FC = () => {
                   </div>
 
                   {/* Email */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email Address <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={form.email}
-                      onChange={handleChange}
-                      required
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all duration-200"
-                      placeholder="Enter your email address"
-                    />
-                  </div>
+
+                  {/* ✅ ADD THIS BLOCK RIGHT HERE */}
+{user && (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      Your Email
+    </label>
+    <input
+      type="email"
+      value={user.email || ''}
+      readOnly
+      className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+    />
+  </div>
+)}
+                 
+{/* Date and Doctor Selection 1 */}
+
+{/* Location Selection */}
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Select Your Location <span className="text-red-500">*</span>
+  </label>
+ <select
+  value={location}
+  onChange={(e) => setLocation(e.target.value)}
+  required
+  className="w-full p-3 border border-gray-300 rounded-lg"
+>
+  <option value="">Choose Location</option>
+  {uniqueLocations.map((loc, i) => (
+    <option key={i} value={loc}>{loc}</option>
+  ))}
+</select>
+</div>
+
+{/* Specialization */}
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    What is your issue? <span className="text-red-500">*</span>
+  </label>
+  <select
+    value={specialization}
+    onChange={(e) => setSpecialization(e.target.value)}
+    required
+    className="w-full p-3 border border-gray-300 rounded-lg"
+  >
+    <option value="">Select Issue</option>
+    <option value="General">General (Fever, Cold)</option>
+    <option value="Heart">Heart Problem</option>
+    <option value="Skin">Skin Issue</option>
+    <option value="Bone">Bone / Orthopedic</option>
+    <option value="Child">Child Specialist</option>
+    <option value="Women">Women / Gynecologist</option>
+  </select>
+</div>
+
+
+
+
 
                   {/* Date and Doctor Selection */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -282,29 +472,75 @@ const DoctorAppointmentSection: React.FC = () => {
                         max={getMaxDate()}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all duration-200"
                       />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Select Doctor <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        name="doctor"
-                        value={form.doctor}
-                        onChange={handleChange}
-                        required
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all duration-200"
-                      >
-                        <option value="">Choose a Doctor</option>
-                        <option value="Dr. Priya Sharma">Dr. Priya Sharma – General Physician</option>
-                        <option value="Dr. Arjun Mehta">Dr. Arjun Mehta – Cardiologist</option>
-                        <option value="Dr. Neha Patel">Dr. Neha Patel – Dermatologist</option>
-                        <option value="Dr. Raj Verma">Dr. Raj Verma – Pediatrician</option>
-                        <option value="Dr. Sunita Kumar">Dr. Sunita Kumar – Gynecologist</option>
-                        <option value="Dr. Vikram Singh">Dr. Vikram Singh – Orthopedic</option>
-                      </select>
-                    </div>
+                    </div>    
                   </div>
+
+{/* Doctor Cards */}
+{filteredDoctors.length > 0 && (
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+    
+    {filteredDoctors.map((doc) => (
+      
+    <div
+    
+  key={doc._id || doc.name}
+  onClick={() => {
+   setForm((prev) => ({
+  ...prev,
+  doctor: prev.doctor === doc._id ? '' : doc._id, // ✅ use ID
+}))
+  }}
+  className={`relative p-4 rounded-2xl border transition-all duration-300 cursor-pointer bg-white
+    ${form.doctor === doc.name 
+      ? 'border-cyan-600 shadow-lg ring-2 ring-cyan-200' 
+      : 'border-gray-200 hover:shadow-md hover:border-gray-300'}`}
+>
+
+{form.doctor === doc.name && (
+  <div className="absolute top-3 right-3 bg-cyan-600 text-white text-xs px-2 py-1 rounded-full">
+    Selected
+  </div>
+)}
+
+        <div className="flex gap-4 items-start">
+  <img
+    src={doc.imageUrl || "/default-doctor.png"}
+    alt={doc.name}
+    className="w-16 h-16 rounded-full object-cover border"
+  />
+
+  <div className="flex-1">
+    <h3 className="font-semibold text-gray-800">{doc.name}</h3>
+    <p className="text-sm text-gray-500">{doc.specialization}</p>
+
+    <div className="text-sm mt-1 text-gray-600">
+      ⭐ {doc.rating} ({doc.reviews})
+    </div>
+
+    <div className="text-sm font-medium text-gray-800 mt-1">
+      ₹{doc.fees}
+    </div>
+
+    <div className="text-xs text-gray-500 mt-1">
+      📍 {doc.location}
+    </div>
+
+    <button
+      onClick={(e) => {
+        e.stopPropagation(); // ✅ VERY IMPORTANT
+        router.push(`/doctor/${doc._id}`);
+      }}
+      className="mt-2 text-sm text-cyan-600 hover:underline"
+    >
+      View Details →
+    </button>
+  </div>
+</div>
+      </div>
+    ))}
+  </div>
+)}
+
 
                   {/* Health Concern */}
                   <div>
@@ -324,6 +560,22 @@ const DoctorAppointmentSection: React.FC = () => {
                       {form.message.length}/500 characters
                     </div>
                   </div>
+
+{ /*pwd section*/}
+
+
+{/* PWD Option */}
+<div className="flex items-center gap-2">
+  <input
+    type="checkbox"
+    checked={pwd}
+    onChange={() => setPwd(!pwd)}
+  />
+  <label className="text-sm text-gray-700">
+    I have more than 40% disability (Doctor will visit home)
+  </label>
+</div>
+
 
                   {/* Submit Button */}
                   <Button

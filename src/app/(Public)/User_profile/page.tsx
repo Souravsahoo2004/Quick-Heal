@@ -499,12 +499,7 @@ const ProfilePage: React.FC = () => {
               Sign In
             </button>
           )}
-          <button
-            onClick={() => router.push("/Verify/login")}
-            className="w-full py-3 border border-gray-300 rounded-lg text-blue-600 font-semibold hover:bg-gray-50"
-          >
-            Switch Account
-          </button>
+          
         </div>
       </div>
     </div>

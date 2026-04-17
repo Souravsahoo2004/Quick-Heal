@@ -11,8 +11,10 @@
 import type * as addresses from "../addresses.js";
 import type * as adminUsers from "../adminUsers.js";
 import type * as cart from "../cart.js";
+import type * as doctors from "../doctors.js";
 import type * as orders from "../orders.js";
 import type * as products from "../products.js";
+import type * as storage from "../storage.js";
 import type * as users from "../users.js";
 
 import type {
@@ -33,8 +35,10 @@ declare const fullApi: ApiFromModules<{
   addresses: typeof addresses;
   adminUsers: typeof adminUsers;
   cart: typeof cart;
+  doctors: typeof doctors;
   orders: typeof orders;
   products: typeof products;
+  storage: typeof storage;
   users: typeof users;
 }>;
 declare const fullApiWithMounts: typeof fullApi;

@@ -1,5 +1,7 @@
 "use client";
-
+import {  useQuery } from "convex/react"; // 🔥 ADD useQuery
+import { useMutation } from "convex/react";
+import { api } from "convex/_generated/api";
 import { useEffect, useState, useMemo, FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +32,7 @@ type Appointment = {
   name: string;
   email: string;
   doctor: string;
+  doctorId: string;  
   date: Timestamp;
   message?: string;
   canceled?: boolean;
@@ -47,14 +50,49 @@ export default function DoctorConsultPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    doctor: "",
-    date: "",
-    message: "",
-  });
+  name: "",
+  email: "",
+  doctor: "",
+  doctorId: "",   // ✅ ADD THIS
+  date: "",
+  message: "",
+});
 
   const db = getFirestore(app);
+const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
+const [rating, setRating] = useState(0);
+const [review, setReview] = useState("");
+const rateDoctor = useMutation(api.doctors.rateDoctor);
+const doctors = useQuery(api.doctors.getDoctors) || []; // 🔥 ADD HERE
+const openRatingModal = (appointment: any) => {
+  setSelectedDoctor({
+    doctorId: appointment.doctorId, // must exist
+    doctor: appointment.doctor,
+  });
+};
+
+
+
+const submitRating = async () => {
+  if (!uid || !selectedDoctor) return;
+
+  try {
+ await rateDoctor({
+  doctorId: selectedDoctor.doctorId, 
+  userId: uid!,
+  rating,
+  review,
+});
+
+    alert("Rating submitted ✅");
+    setSelectedDoctor(null);
+    setRating(0);
+    setReview("");
+  } catch (err) {
+    console.error(err);
+  }
+};
+
 
   // Track logged-in user
   useEffect(() => {
@@ -133,7 +171,7 @@ export default function DoctorConsultPage() {
       if (!res.ok) throw new Error(data.error || "Failed to submit");
 
       alert("Appointment requested successfully ✅");
-      setFormData({ name: "", email: "", doctor: "", date: "", message: "" });
+     setFormData({ name: "", email: "", doctor: "", doctorId: "", date: "", message: "" });
     } catch (err: any) {
       alert("Error: " + err.message);
     } finally {
@@ -188,14 +226,26 @@ export default function DoctorConsultPage() {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="border rounded px-3 py-2 w-full"
             />
-            <input
-              type="text"
-              placeholder="Doctor's Name"
-              value={formData.doctor}
-              required
-              onChange={(e) => setFormData({ ...formData, doctor: e.target.value })}
-              className="border rounded px-3 py-2 w-full"
-            />
+          <select
+  required
+  className="border rounded px-3 py-2 w-full"
+  onChange={(e) => {
+    const selected = JSON.parse(e.target.value);
+    setFormData({
+      ...formData,
+      doctor: selected.name,
+      doctorId: selected._id, // 🔥 IMPORTANT
+    });
+  }}
+>
+  <option value="">Select Doctor</option>
+
+  {doctors.map((doc) => (
+    <option key={doc._id} value={JSON.stringify(doc)}>
+      {doc.name}
+    </option>
+  ))}
+</select>
             <input
               type="date"
               placeholder="Appointment Date"
@@ -217,87 +267,174 @@ export default function DoctorConsultPage() {
         </form>
 
         {/* ✅ Existing Appointments */}
-        {sortedAppointments.length === 0 ? (
-          <div className="rounded-xl border border-dashed p-8 text-center text-gray-600">
-            <p>No appointments found.</p>
+        {sortedAppointments.map((a) => {
+  const status = statusOf(a);   // ✅ FIRST declare
+  const dStr = a.date.toDate().toLocaleDateString();
+
+  return (
+    <div
+      key={a.id}
+      className="rounded-xl border bg-white p-5 shadow-sm"
+    >
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-gray-800">
+            <User2 className="w-4 h-4 text-gray-500" />
+            <span className="font-medium">{a.name}</span>
           </div>
-        ) : (
-          <div className="grid gap-5">
-            {sortedAppointments.map((a) => {
-              const status = statusOf(a);
-              const dStr = a.date.toDate().toLocaleDateString();
 
-              return (
-                <div
-                  key={a.id}
-                  className="rounded-xl border bg-white p-5 shadow-sm"
-                >
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-gray-800">
-                        <User2 className="w-4 h-4 text-gray-500" />
-                        <span className="font-medium">{a.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Mail className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm">{a.email}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <Stethoscope className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm">{a.doctor}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <CalendarDays className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm">{dStr}</span>
-                      </div>
-                      {a.message && (
-                        <p className="text-sm text-gray-600 mt-2">{a.message}</p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          status === "Upcoming"
-                            ? "bg-emerald-50 text-emerald-700"
-                            : status === "Canceled"
-                            ? "bg-yellow-50 text-yellow-700"
-                            : "bg-gray-100 text-gray-700"
-                        }`}
-                      >
-                        {status}
-                      </span>
-
-                      <div className="flex items-center gap-2">
-                        {!a.canceled && (
-                          <Button
-                            variant="secondary"
-                            className="gap-2"
-                            onClick={() => handleCancel(a)}
-                            title="Cancel this appointment"
-                          >
-                            <XCircle className="w-4 h-4" />
-                            Cancel
-                          </Button>
-                        )}
-                        <Button
-                          variant="destructive"
-                          className="gap-2"
-                          onClick={() => handleDelete(a)}
-                          title="Delete this appointment"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="flex items-center gap-2 text-gray-600">
+            <Mail className="w-4 h-4 text-gray-500" />
+            <span className="text-sm">{a.email}</span>
           </div>
-        )}
+
+          <div className="flex items-center gap-2 text-gray-700">
+            <Stethoscope className="w-4 h-4 text-gray-500" />
+            <span className="text-sm">{a.doctor}</span>
+          </div>
+
+          <div className="flex items-center gap-2 text-gray-700">
+            <CalendarDays className="w-4 h-4 text-gray-500" />
+            <span className="text-sm">{dStr}</span>
+          </div>
+
+          {a.message && (
+            <p className="text-sm text-gray-600 mt-2">{a.message}</p>
+          )}
+
+          {/* ✅ ⭐ RATE BUTTON HERE */}
+          {status === "Upcoming"  && (
+            <div className="mt-3">
+              <Button
+                size="sm"
+                onClick={() => openRatingModal(a)}
+                className="bg-yellow-500 hover:bg-yellow-600 text-white"
+              >
+                ⭐ Rate Doctor
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span
+            className={`px-3 py-1 rounded-full text-xs font-medium ${
+              status === "Upcoming"
+                ? "bg-emerald-50 text-emerald-700"
+                : status === "Canceled"
+                ? "bg-yellow-50 text-yellow-700"
+                : "bg-gray-100 text-gray-700"
+            }`}
+          >
+            {status}
+          </span>
+
+          <div className="flex items-center gap-2">
+            {!a.canceled && (
+              <Button
+                variant="secondary"
+                className="gap-2"
+                onClick={() => handleCancel(a)}
+              >
+                <XCircle className="w-4 h-4" />
+                Cancel
+              </Button>
+            )}
+
+            <Button
+              variant="destructive"
+              className="gap-2"
+              onClick={() => handleDelete(a)}
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete
+            </Button>
+          </div>
+        </div>
+
       </div>
-    </section>
+    </div>
   );
+})}
+      </div>
+      {selectedDoctor && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded-xl w-[400px]">
+      <h2 className="text-lg font-semibold mb-4">
+       Rate {selectedDoctor.doctor}
+      </h2>
+
+      {/* ⭐ Stars */}
+      <div className="flex gap-2 mb-4">
+        {[1,2,3,4,5].map((star) => (
+          <span
+            key={star}
+            onClick={() => setRating(star)}
+            className={`cursor-pointer text-2xl ${
+              star <= rating ? "text-yellow-500" : "text-gray-300"
+            }`}
+          >
+            ★
+          </span>
+        ))}
+      </div>
+
+      {/* Review */}
+      <textarea
+        placeholder="Write review..."
+        value={review}
+        onChange={(e) => setReview(e.target.value)}
+        className="w-full border p-2 rounded mb-4"
+      />
+
+      {/* Buttons */}
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="secondary"
+          onClick={() => setSelectedDoctor(null)}
+        >
+          Cancel
+        </Button>
+
+        <Button
+  onClick={async () => {
+    try {
+   await rateDoctor({
+  doctorId: selectedDoctor.doctorId,
+  userId: uid!,
+  rating,
+  review,
+});
+
+      alert("Rating submitted ✅");
+    } catch (err) {
+      console.error(err);
+    }
+
+    setSelectedDoctor(null);
+    setRating(0);
+    setReview("");
+  }}
+>
+          Submit
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
+    </section>
+
+
+
+
+
+
+
+  );
+
+
+
+
+  
 }

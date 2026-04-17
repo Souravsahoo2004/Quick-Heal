@@ -83,6 +83,43 @@ export default defineSchema({
 
  
 
+doctors: defineTable({
+  doctorId: v.string(),
+  email: v.string(),
+
+  name: v.string(),
+  specialization: v.string(),
+  location: v.string(),
+
+  doctorImageIds: v.array(v.id("_storage")),
+  locationImageIds: v.array(v.id("_storage")),
+
+  rating: v.number(),      // avg rating
+  reviews: v.number(),
+  totalRating: v.optional(v.number()),     // total number of users // 🔥 ADD THIS LINE
+
+  fees: v.number(),
+
+  description: v.optional(v.string()),
+})
+
+
+
+
+.index("by_location", ["location"])
+.index("by_specialization", ["specialization"])
+.index("by_email", ["email"]), // 🔥 prevent duplicates
+
+ratings: defineTable({
+  doctorId: v.string(),
+  userId: v.string(),
+  rating: v.number(),
+  review: v.string(),
+  createdAt: v.number(),
+})
+.index("by_doctor", ["doctorId"])
+.index("by_user", ["userId"]),
+
 
 
   });

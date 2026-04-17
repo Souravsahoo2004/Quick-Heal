@@ -12,7 +12,10 @@ interface AppointmentRequest {
   email: string;
   date: string; // 'YYYY-MM-DD'
   doctor: string;
+  doctorId: string;  
+  pwd?: boolean;
   message?: string;
+  
 }
 
 // Convert YYYY-MM-DD to Date safely
@@ -27,9 +30,8 @@ function badRequest(msg: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { uid, name, email, date, doctor, message }: AppointmentRequest =
-      await request.json();
-
+  const { uid, name, email, date, doctor, doctorId, message, pwd }: AppointmentRequest =
+  await request.json();
     if (!uid || !name || !email || !date || !doctor) {
       return badRequest(
         "Missing required fields: uid, name, email, date, doctor"
@@ -57,7 +59,9 @@ export async function POST(request: NextRequest) {
         name,
         email,
         doctor,
+          doctorId,  
         message: message ?? "",
+        pwd: pwd ?? false,
         date: Timestamp.fromDate(whenLocal),
         canceled: false,
         createdAt: FieldValue.serverTimestamp(),
@@ -86,6 +90,7 @@ export async function POST(request: NextRequest) {
           <p><strong>Email:</strong> ${email}</p>
           <p><strong>Date:</strong> ${new Date(date).toLocaleDateString()}</p>
           <p><strong>Doctor:</strong> ${doctor}</p>
+          ${pwd ? `<p><strong>🦽 Special Request:</strong> Patient requires home visit (PWD)</p>` : ""}
           ${message ? `<p><strong>Message:</strong> ${message}</p>` : ""}
         </div>
       </div>`,
@@ -104,6 +109,7 @@ export async function POST(request: NextRequest) {
           <p>Hello <b>${name}</b>,</p>
           <p>We have received your appointment request with <b>${doctor}</b>.</p>
           <p><b>Date:</b> ${new Date(date).toLocaleDateString()}</p>
+          ${pwd ? `<p style="color: green;"><b>🏠 Note:</b> Doctor will contact you and visit your home.</p>` : ""}
           ${message ? `<p><b>Your Concern:</b> ${message}</p>` : ""}
           <p>Our team will contact you within 24 hours to confirm your appointment.</p>
         </div>
