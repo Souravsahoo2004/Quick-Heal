@@ -1,6 +1,9 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+/* =========================
+   CREATE DOCTOR
+========================= */
 export const saveDoctorImages = mutation({
   args: {
     doctorId: v.string(),
@@ -13,32 +16,49 @@ export const saveDoctorImages = mutation({
     doctorImageIds: v.array(v.id("_storage")),
     locationImageIds: v.array(v.id("_storage")),
 
-    rating: v.number(),
-    reviews: v.number(),
     fees: v.number(),
+
+    description: v.optional(v.string()), // ✅ added
   },
 
   handler: async (ctx, args) => {
-   await ctx.db.insert("doctors", {
-  ...args,
-  totalRating: 0,   // 🔥 NEW
-  reviews: 0,
-  rating: 0,
-});
+    await ctx.db.insert("doctors", {
+      doctorId: args.doctorId,
+      email: args.email,
+
+      name: args.name,
+      specialization: args.specialization,
+      location: args.location,
+
+      doctorImageIds: args.doctorImageIds,
+      locationImageIds: args.locationImageIds,
+
+      fees: args.fees,
+
+      description: args.description || "", // ✅ store description
+
+      // auto values
+      totalRating: 0,
+      reviews: 0,
+      rating: 0,
+    });
   },
 });
 
+/* =========================
+   GET ALL DOCTORS
+========================= */
 export const getDoctors = query({
   handler: async (ctx) => {
     const doctors = await ctx.db.query("doctors").collect();
 
     return Promise.all(
       doctors.map(async (doc) => {
-        const doctorImageUrl = doc.doctorImageIds[0]
+        const doctorImageUrl = doc.doctorImageIds?.[0]
           ? await ctx.storage.getUrl(doc.doctorImageIds[0])
           : null;
 
-        const locationImageUrl = doc.locationImageIds[0]
+        const locationImageUrl = doc.locationImageIds?.[0]
           ? await ctx.storage.getUrl(doc.locationImageIds[0])
           : null;
 
@@ -52,8 +72,37 @@ export const getDoctors = query({
   },
 });
 
+/* =========================
+   GET SINGLE DOCTOR
+========================= */
+export const getDoctorById = query({
+  args: {
+    id: v.id("doctors"),
+  },
 
+  handler: async (ctx, args) => {
+    const doctor = await ctx.db.get(args.id);
+    if (!doctor) return null;
 
+    const imageUrl = doctor.doctorImageIds?.[0]
+      ? await ctx.storage.getUrl(doctor.doctorImageIds[0])
+      : null;
+
+    const locationImageUrl = doctor.locationImageIds?.[0]
+      ? await ctx.storage.getUrl(doctor.locationImageIds[0])
+      : null;
+
+    return {
+      ...doctor,
+      imageUrl,
+      locationImageUrl,
+    };
+  },
+});
+
+/* =========================
+   RATE + REVIEW DOCTOR
+========================= */
 export const rateDoctor = mutation({
   args: {
     doctorId: v.id("doctors"),
@@ -63,44 +112,65 @@ export const rateDoctor = mutation({
   },
 
   handler: async (ctx, args) => {
-    // 🔥 Find doctor
-   const doctor = await ctx.db.get(args.doctorId);
-
+    const doctor = await ctx.db.get(args.doctorId);
     if (!doctor) throw new Error("Doctor not found");
 
-    // 🔥 Check if user already rated
+    // check if user already rated
     const existing = await ctx.db
       .query("ratings")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("doctorId"), args.doctorId),
-          q.eq(q.field("userId"), args.userId)
-        )
+      .withIndex("by_user_doctor", (q) =>
+        q.eq("userId", args.userId).eq("doctorId", args.doctorId)
       )
-      .first();
+      .unique();
 
     if (existing) {
-      throw new Error("You already rated this doctor");
+      // update existing
+      await ctx.db.patch(existing._id, {
+        rating: args.rating,
+        review: args.review,
+        createdAt: Date.now(),
+      });
+    } else {
+      // insert new
+      await ctx.db.insert("ratings", {
+        doctorId: args.doctorId,
+        userId: args.userId,
+        rating: args.rating,
+        review: args.review,
+        createdAt: Date.now(),
+      });
     }
 
-    // 🔥 Save rating separately
-    await ctx.db.insert("ratings", {
-      doctorId: args.doctorId,
-      userId: args.userId,
-      rating: args.rating,
-      review: args.review,
-      createdAt: Date.now(),
-    });
+    // recalculate rating
+    const allRatings = await ctx.db
+      .query("ratings")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", args.doctorId))
+      .collect();
 
-    // 🔥 Update doctor stats
-    const newTotal = (doctor.totalRating || 0) + args.rating;
-    const newReviews = (doctor.reviews || 0) + 1;
-    const avg = newTotal / newReviews;
+    const total = allRatings.reduce((sum, r) => sum + r.rating, 0);
+    const avg = total / allRatings.length;
 
-    await ctx.db.patch(doctor._id, {
-      totalRating: newTotal,
-      reviews: newReviews,
-      rating: Number(avg.toFixed(1)), // 4.3 format
+    await ctx.db.patch(args.doctorId, {
+      totalRating: total,
+      reviews: allRatings.length,
+      rating: Number(avg.toFixed(1)),
     });
+  },
+});
+
+/* =========================
+   GET REVIEWS
+========================= */
+export const getDoctorReviews = query({
+  args: {
+    doctorId: v.id("doctors"),
+  },
+
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("ratings")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", args.doctorId))
+      .order("desc")
+      .collect();
   },
 });

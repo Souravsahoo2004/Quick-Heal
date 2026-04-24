@@ -3,6 +3,9 @@ import { Outfit } from "next/font/google";
 import "../globals.css";
 import Provider from "./Provider";
 
+
+
+
 export const metadata: Metadata = {
   title: "Quick Heal",
   description: "Quick Heal app",

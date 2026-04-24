@@ -111,14 +111,15 @@ doctors: defineTable({
 .index("by_email", ["email"]), // 🔥 prevent duplicates
 
 ratings: defineTable({
-  doctorId: v.string(),
+  doctorId: v.id("doctors"),
   userId: v.string(),
   rating: v.number(),
   review: v.string(),
   createdAt: v.number(),
 })
 .index("by_doctor", ["doctorId"])
-.index("by_user", ["userId"]),
+.index("by_user", ["userId"])
+.index("by_user_doctor", ["userId", "doctorId"]),
 
 
 

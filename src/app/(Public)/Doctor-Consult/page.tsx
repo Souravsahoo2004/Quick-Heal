@@ -229,14 +229,17 @@ const submitRating = async () => {
           <select
   required
   className="border rounded px-3 py-2 w-full"
-  onChange={(e) => {
-    const selected = JSON.parse(e.target.value);
-    setFormData({
-      ...formData,
-      doctor: selected.name,
-      doctorId: selected._id, // 🔥 IMPORTANT
-    });
-  }}
+ onChange={(e) => {
+  if (!e.target.value) return; // ✅ IMPORTANT FIX
+
+  const selected = JSON.parse(e.target.value);
+
+  setFormData({
+    ...formData,
+    doctor: selected.name,
+    doctorId: selected._id,
+  });
+}}
 >
   <option value="">Select Doctor</option>
 
