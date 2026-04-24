@@ -37,7 +37,7 @@ const router = useRouter();
         className="bg-white shadow-lg rounded-2xl p-6 flex gap-6"
       >
         <img
-          src={doctor.imageUrl || "/default-doctor.png"}
+           src={doctor.doctorImages?.[0] || "/default-doctor.png"}
           className="w-40 h-40 rounded-xl object-cover"
         />
 
@@ -63,14 +63,14 @@ const router = useRouter();
       </motion.div>
 
       {/* 🔹 LOCATION IMAGE */}
-      {doctor.locationImageUrl && (
-        <motion.img
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          src={doctor.locationImageUrl}
-          className="mt-6 w-full h-64 object-cover rounded-xl shadow"
-        />
-      )}
+      {doctor.locationImages?.[0] && (
+  <motion.img
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    src={doctor.locationImages[0]}
+    className="mt-6 w-full h-64 object-cover rounded-xl shadow"
+  />
+)}
 
       {/* 🔹 ABOUT SECTION */}
       <motion.div 

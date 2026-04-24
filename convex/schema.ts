@@ -85,6 +85,7 @@ export default defineSchema({
 
 doctors: defineTable({
   doctorId: v.string(),
+  userId: v.string(),  
   email: v.string(),
 
   name: v.string(),

@@ -2,11 +2,12 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 /* =========================
-   CREATE DOCTOR
+   CREATE DOCTOR (ONLY 1 PER USER)
 ========================= */
 export const saveDoctorImages = mutation({
   args: {
     doctorId: v.string(),
+    userId: v.string(), // ✅ important
     email: v.string(),
 
     name: v.string(),
@@ -17,31 +18,62 @@ export const saveDoctorImages = mutation({
     locationImageIds: v.array(v.id("_storage")),
 
     fees: v.number(),
-
-    description: v.optional(v.string()), // ✅ added
+    description: v.optional(v.string()),
   },
 
   handler: async (ctx, args) => {
+    // 🚫 Restrict: only 1 doctor per user
+    const existing = await ctx.db
+      .query("doctors")
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .first();
+
+    if (existing) {
+      throw new Error("Doctor already exists for this user");
+    }
+
     await ctx.db.insert("doctors", {
-      doctorId: args.doctorId,
-      email: args.email,
+      ...args,
+      description: args.description || "",
 
-      name: args.name,
-      specialization: args.specialization,
-      location: args.location,
-
-      doctorImageIds: args.doctorImageIds,
-      locationImageIds: args.locationImageIds,
-
-      fees: args.fees,
-
-      description: args.description || "", // ✅ store description
-
-      // auto values
       totalRating: 0,
       reviews: 0,
       rating: 0,
     });
+  },
+});
+
+/* =========================
+   GET DOCTOR BY USER (🔥 IMPORTANT)
+========================= */
+export const getDoctorByUserId = query({
+  args: { userId: v.string() },
+
+  handler: async (ctx, args) => {
+    const doctor = await ctx.db
+      .query("doctors")
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .first();
+
+    if (!doctor) return null;
+
+     const doctorImages = await Promise.all(
+      (doctor.doctorImageIds || []).map((id) =>
+        ctx.storage.getUrl(id)
+      )
+    );
+
+    const locationImages = await Promise.all(
+      (doctor.locationImageIds || []).map((id) =>
+        ctx.storage.getUrl(id)
+      )
+    );
+
+    return {
+      ...doctor,
+      doctorImages,
+      locationImages,
+    };
   },
 });
 
@@ -54,7 +86,7 @@ export const getDoctors = query({
 
     return Promise.all(
       doctors.map(async (doc) => {
-        const doctorImageUrl = doc.doctorImageIds?.[0]
+        const imageUrl = doc.doctorImageIds?.[0]
           ? await ctx.storage.getUrl(doc.doctorImageIds[0])
           : null;
 
@@ -64,8 +96,8 @@ export const getDoctors = query({
 
         return {
           ...doc,
-          imageUrl: doctorImageUrl,
-          locationImageUrl: locationImageUrl,
+          imageUrl,
+          locationImageUrl,
         };
       })
     );
@@ -76,27 +108,61 @@ export const getDoctors = query({
    GET SINGLE DOCTOR
 ========================= */
 export const getDoctorById = query({
-  args: {
-    id: v.id("doctors"),
-  },
+  args: { id: v.id("doctors") },
 
   handler: async (ctx, args) => {
     const doctor = await ctx.db.get(args.id);
     if (!doctor) return null;
 
-    const imageUrl = doctor.doctorImageIds?.[0]
-      ? await ctx.storage.getUrl(doctor.doctorImageIds[0])
-      : null;
+    const doctorImages = (
+  await Promise.all(
+    (doctor.doctorImageIds || []).map((id) =>
+      ctx.storage.getUrl(id)
+    )
+  )
+).filter((img): img is string => !!img);
 
-    const locationImageUrl = doctor.locationImageIds?.[0]
-      ? await ctx.storage.getUrl(doctor.locationImageIds[0])
-      : null;
+    const locationImages = await Promise.all(
+      (doctor.locationImageIds || []).map((id) =>
+        ctx.storage.getUrl(id)
+      )
+    );
 
     return {
       ...doctor,
-      imageUrl,
-      locationImageUrl,
+      doctorImages,
+      locationImages,
     };
+  },
+});
+/* =========================
+   UPDATE DOCTOR
+========================= */
+export const updateDoctor = mutation({
+  args: {
+    id: v.id("doctors"),
+
+    name: v.string(),
+    specialization: v.string(),
+    location: v.string(),
+    fees: v.number(),
+    description: v.string(),
+  },
+
+  handler: async (ctx, args) => {
+    const { id, ...rest } = args;
+    await ctx.db.patch(id, rest);
+  },
+});
+
+/* =========================
+   DELETE DOCTOR
+========================= */
+export const deleteDoctor = mutation({
+  args: { id: v.id("doctors") },
+
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
   },
 });
 
@@ -124,14 +190,14 @@ export const rateDoctor = mutation({
       .unique();
 
     if (existing) {
-      // update existing
+      // update
       await ctx.db.patch(existing._id, {
         rating: args.rating,
         review: args.review,
         createdAt: Date.now(),
       });
     } else {
-      // insert new
+      // insert
       await ctx.db.insert("ratings", {
         doctorId: args.doctorId,
         userId: args.userId,
@@ -141,7 +207,7 @@ export const rateDoctor = mutation({
       });
     }
 
-    // recalculate rating
+    // recalc
     const allRatings = await ctx.db
       .query("ratings")
       .withIndex("by_doctor", (q) => q.eq("doctorId", args.doctorId))
@@ -162,9 +228,7 @@ export const rateDoctor = mutation({
    GET REVIEWS
 ========================= */
 export const getDoctorReviews = query({
-  args: {
-    doctorId: v.id("doctors"),
-  },
+  args: { doctorId: v.id("doctors") },
 
   handler: async (ctx, args) => {
     return await ctx.db

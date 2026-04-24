@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
         pwd: pwd ?? false,
         date: Timestamp.fromDate(whenLocal),
         canceled: false,
+         status: "pending",
         createdAt: FieldValue.serverTimestamp(),
       });
 
@@ -75,6 +76,15 @@ export async function POST(request: NextRequest) {
         pass: process.env.SMTP_PASS,
       },
     });
+
+const baseUrl =
+  request.headers.get("origin") ||
+  process.env.NEXT_PUBLIC_APP_URL ||
+  "http://localhost:3000";
+
+const acceptUrl = `${baseUrl}/api/appointment/respond?id=${docRef.id}&uid=${uid}&action=accept`;
+const declineUrl = `${baseUrl}/api/appointment/respond?id=${docRef.id}&uid=${uid}&action=decline`;
+
 
     // Admin email
     await transporter.sendMail({
@@ -93,7 +103,23 @@ export async function POST(request: NextRequest) {
           ${pwd ? `<p><strong>🦽 Special Request:</strong> Patient requires home visit (PWD)</p>` : ""}
           ${message ? `<p><strong>Message:</strong> ${message}</p>` : ""}
         </div>
+
+<p><strong>Doctor:</strong> ${doctor}</p>
+
+<div style="margin-top:20px;">
+  <a href="${acceptUrl}" 
+     style="background:green;color:white;padding:10px 15px;border-radius:6px;text-decoration:none;margin-right:10px;">
+     ✅ Accept
+  </a>
+
+  <a href="${declineUrl}" 
+     style="background:red;color:white;padding:10px 15px;border-radius:6px;text-decoration:none;">
+     ❌ Decline
+  </a>
+</div>
+
       </div>`,
+      
     });
 
     // Patient confirmation

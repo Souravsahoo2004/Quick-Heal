@@ -443,19 +443,19 @@ setPwd(false)
     className="w-full p-3 border border-gray-300 rounded-lg"
   >
     <option value="">Select Issue</option>
-    <option value="General">General (Fever, Cold)</option>
-    <option value="Heart">Heart Problem</option>
-    <option value="Skin">Skin Issue</option>
-    <option value="Bone">Bone / Orthopedic</option>
-    <option value="Child">Child Specialist</option>
-    <option value="Women">Women / Gynecologist</option>
+    <option value="General Fever">General (Fever, Cold)</option>
+    <option value="Heart Issue">Heart Problem</option>
+    <option value="Skin Issue">Skin Issue</option>
+    <option value="Bone Problem">Bone / Orthopedic</option>
+    <option value="Child Specialist">Child Specialist</option>
+    <option value="Women ">Women / Gynecologist</option>
   </select>
 </div>
 
 
 
 
-
+ 
                   {/* Date and Doctor Selection */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>

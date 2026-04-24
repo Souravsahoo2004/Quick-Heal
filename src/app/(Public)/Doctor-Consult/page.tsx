@@ -36,6 +36,7 @@ type Appointment = {
   date: Timestamp;
   message?: string;
   canceled?: boolean;
+  status?: "pending" | "accepted" | "declined"; // ✅ ADD THIS
 };
 
 function startOfToday(): Date {
@@ -140,14 +141,20 @@ const submitRating = async () => {
   };
 
   // Appointment status
-  const statusOf = (a: Appointment) => {
-    const t = startOfToday().getTime();
-    const d = a.date.toDate();
-    d.setHours(0, 0, 0, 0);
-    if (a.canceled) return "Canceled";
-    if (d.getTime() < t) return "Past";
-    return "Upcoming";
-  };
+const statusOf = (a: Appointment) => {
+  if (a.canceled) return "Canceled";
+  if (a.status === "accepted") return "Accepted";
+  if (a.status === "declined") return "Declined";
+  if (a.status === "pending") return "Pending";
+
+  // fallback (old data)
+  const t = startOfToday().getTime();
+  const d = a.date.toDate();
+  d.setHours(0, 0, 0, 0);
+
+  if (d.getTime() < t) return "Past";
+  return "Upcoming";
+};
 
   const sortedAppointments = useMemo(
     () => appointments.sort((a, b) => a.date.toMillis() - b.date.toMillis()),
@@ -307,7 +314,7 @@ const submitRating = async () => {
           )}
 
           {/* ✅ ⭐ RATE BUTTON HERE */}
-          {status === "Upcoming"  && (
+          {status === "Accepted"  && (
             <div className="mt-3">
               <Button
                 size="sm"
@@ -321,17 +328,21 @@ const submitRating = async () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <span
-            className={`px-3 py-1 rounded-full text-xs font-medium ${
-              status === "Upcoming"
-                ? "bg-emerald-50 text-emerald-700"
-                : status === "Canceled"
-                ? "bg-yellow-50 text-yellow-700"
-                : "bg-gray-100 text-gray-700"
-            }`}
-          >
-            {status}
-          </span>
+         <span
+  className={`px-3 py-1 rounded-full text-xs font-medium ${
+    status === "Accepted"
+      ? "bg-green-100 text-green-700"
+      : status === "Declined"
+      ? "bg-red-100 text-red-700"
+      : status === "Pending"
+      ? "bg-yellow-100 text-yellow-700"
+      : status === "Canceled"
+      ? "bg-gray-200 text-gray-700"
+      : "bg-gray-100 text-gray-700"
+  }`}
+>
+  {status}
+</span>
 
           <div className="flex items-center gap-2">
             {!a.canceled && (
