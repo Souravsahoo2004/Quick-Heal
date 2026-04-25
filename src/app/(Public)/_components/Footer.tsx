@@ -7,7 +7,7 @@ export default function Footer() {
   return (
     <footer className="relative bg-[#f9fbfd] border-t border-gray-200 overflow-hidden">
       {/* Gradient Glow */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#c9efff] via-[#f9fbfd] to-transparent opacity-70 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-linear-to-t from-[#c9efff] via-[#f9fbfd] to-transparent opacity-70 pointer-events-none"></div>
 
       {/* Footer Container */}
       <div className="relative max-w-7xl mx-auto px-6 md:px-12 py-20 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 z-10">
@@ -70,7 +70,7 @@ export default function Footer() {
           <ul className="space-y-3 text-gray-600">
             <li className="flex items-center gap-2"><MdLocationOn className="text-[#008FC8]" /> Bhubaneswar, Odisha, India</li>
             <li className="flex items-center gap-2"><MdEmail className="text-[#008FC8]" /> support@quickheal.com</li>
-            <li className="flex items-center gap-2"><MdPhone className="text-[#008FC8]" /> +91 7205129310</li>
+            <li className="flex items-center gap-2"><MdPhone className="text-[#008FC8]" /> +91 8093868851</li>
           </ul>
         </div>
       </div>
@@ -90,7 +90,7 @@ export default function Footer() {
       </div>
 
       {/* Subtle Glow Line */}
-      <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-[#008FC8] via-[#00B6D3] to-[#6BE5FF] blur-md opacity-60"></div>
+      <div className="absolute bottom-0 left-0 w-full h-1 bg-linear-to-r from-[#008FC8] via-[#00B6D3] to-[#6BE5FF] blur-md opacity-60"></div>
     </footer>
   );
 }

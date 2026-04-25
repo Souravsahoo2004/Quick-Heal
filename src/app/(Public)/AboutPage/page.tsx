@@ -180,17 +180,17 @@ export default function AboutPage() {
 
     {[
       {
-        name: "Andu",
+        name: "Nitish Ranjan Behera",
         role: "Full Stack Developer",
         img: "/team/teammem1.jpg",
       },
       {
-        name: "Pandu",
+        name: "Koushik Das",
         role: "Backend Engineer",
         img: "/team/teammem2.jpg",
       },
       {
-        name: "Gandu",
+        name: "Nirmal Kumar Behera",
         role: "UI/UX Designer",
         img: "/team/teammem3.jpg",
       },
