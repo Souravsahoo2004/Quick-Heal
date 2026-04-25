@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
-export default function AppointmentStatusPage() {
+export default function AppointmentStatusClient() {
   const params = useSearchParams();
   const status = params.get("status");
 
