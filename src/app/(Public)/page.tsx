@@ -4,6 +4,9 @@ import Hero from "./_components/Hero";
 import HeroFooter from "./_components/HeroFooter";
 import HeroSection from "./_components/HeroFooter";
 import Footer from "./_components/Footer";
+import FAQSection from "./_components/Faqs";
+import TestimonialsSection from "./_components/Testomenials";
+
 export default function Home() {
   return (
    <div>
@@ -11,6 +14,8 @@ export default function Home() {
       
       <Hero/>
       <HeroFooter/>
+<FAQSection/>
+<TestimonialsSection/>
     
     </div>
   );

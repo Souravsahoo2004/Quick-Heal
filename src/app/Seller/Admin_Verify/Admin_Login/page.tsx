@@ -1,21 +1,25 @@
 "use client";
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth, firestore } from "@/lib/firebase";
 import Link from "next/link";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
+import { Stethoscope, HeartPulse } from "lucide-react";
 
 const AdminLoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const router = useRouter();
 
   const handleLogin = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
+    setMessage(null);
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -23,23 +27,38 @@ const AdminLoginPage = () => {
 
       if (user.emailVerified) {
         await setDoc(
-          doc(firestore, "adminUsers", user.uid), // Store in adminUsers
+          doc(firestore, "adminUsers", user.uid),
           {
             lastLoginAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           },
           { merge: true }
         );
-        router.push("/Seller/Dashboard"); // or wherever the admin home is
+        router.push("/Seller/Dashboard");
       } else {
         setError("Please verify your email before logging in.");
       }
     } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unknown error occurred");
-      }
+      if (err instanceof Error) setError(err.message);
+      else setError("An unknown error occurred");
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setError(null);
+    setMessage(null);
+
+    if (!email) {
+      setError("Please enter your email first.");
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setMessage("Password reset email sent. Check your inbox.");
+    } catch (err) {
+      if (err instanceof Error) setError(err.message);
+      else setError("Failed to send reset email");
     }
   };
 
@@ -48,62 +67,112 @@ const AdminLoginPage = () => {
   };
 
   return (
-    <div className="bg-gradient-to-b from-gray-600 to-black justify-center items-center h-screen w-screen flex flex-col relative pt-24">
-      <div className="flex items-center justify-center gap-6 mb-10 w-full max-w-lg">
-        <Button
-          onClick={handleBack}
-          variant="outline"
-          className="bg-transparent border-green-400 text-green-400 hover:bg-green-400 hover:text-white px-4 py-2 mr-10 mt-2"
-        >
-          ← Back
-        </Button>
-        <h2 className="text-4xl font-medium text-white">
-          Admin <span className="text-green-400">Login</span>
-        </h2>
-      </div>
-      <div className="p-5 border border-gray-300 rounded">
-        <form onSubmit={handleLogin} className="space-y-6 px-6 pb-4">
-          <div className="mb-5">
-            <label htmlFor="email" className="text-sm font-medium block mb-2 text-gray-300">
-              Email Address
-            </label>
+    <div className="relative flex items-center justify-center min-h-screen bg-linear-to-br from-blue-900 via-slate-900 to-black overflow-hidden">
+
+      {/* background blobs */}
+      <motion.div
+        className="absolute w-72 h-72 bg-cyan-500 rounded-full blur-3xl opacity-20"
+        animate={{ x: [0, 100, -50, 0], y: [0, -50, 50, 0] }}
+        transition={{ duration: 12, repeat: Infinity }}
+      />
+
+      <motion.div
+        className="absolute w-72 h-72 bg-green-500 rounded-full blur-3xl opacity-20"
+        animate={{ x: [0, -100, 50, 0], y: [0, 50, -50, 0] }}
+        transition={{ duration: 15, repeat: Infinity }}
+      />
+
+      <motion.div
+        initial={{ opacity: 0, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="backdrop-blur-xl bg-white/10 border border-white/20 shadow-2xl rounded-3xl p-8 w-full max-w-md z-10"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <Button
+            onClick={handleBack}
+            variant="outline"
+            className="border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-white"
+          >
+            ← Back
+          </Button>
+
+          <div className="flex items-center gap-2 text-white">
+            <Stethoscope className="text-cyan-400" />
+            <h2 className="text-2xl font-semibold">
+              Admin <span className="text-cyan-400">Login</span>
+            </h2>
+          </div>
+        </div>
+
+        {/* icon */}
+        <div className="flex justify-center mb-6">
+          <motion.div
+            animate={{ scale: [1, 1.1, 1] }}
+            transition={{ repeat: Infinity, duration: 2 }}
+            className="p-4 bg-cyan-500/20 rounded-full"
+          >
+            <HeartPulse className="text-cyan-400 w-8 h-8" />
+          </motion.div>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-5">
+          <div>
+            <label className="text-sm text-gray-300">Email Address</label>
             <input
               type="email"
-              id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="border-2 outline-none sm:text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5 bg-gray-600 border-gray-500 placeholder-gray-400 text-white"
+              className="w-full mt-1 p-3 rounded-xl bg-white/10 border border-gray-500 text-white focus:ring-2 focus:ring-cyan-400 outline-none"
             />
           </div>
-          <div className="mb-8">
-            <label htmlFor="password" className="text-sm font-medium block mb-2 text-gray-300">
-              Password
-            </label>
+
+          <div>
+            <label className="text-sm text-gray-300">Password</label>
             <input
               type="password"
-              id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="border-2 outline-none sm:text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5 bg-gray-600 border-gray-500 placeholder-gray-400 text-white"
+              className="w-full mt-1 p-3 rounded-xl bg-white/10 border border-gray-500 text-white focus:ring-2 focus:ring-cyan-400 outline-none"
             />
           </div>
-          {error && <p className="text-red-500">{error}</p>}
-          <button
+
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="text-sm text-cyan-400 hover:underline"
+            >
+              Forgot Password?
+            </button>
+          </div>
+
+          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {message && <p className="text-green-400 text-sm">{message}</p>}
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             type="submit"
-            className="w-full flex justify-center py-2 px-4 border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-offset-2 focus:ring-indigo-500 hover:transition-all hover:scale-105"
+            className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-medium shadow-lg"
           >
             Login
-          </button>
+          </motion.button>
         </form>
-        <p className="text-sm font-medium text-gray-300 space-y-6 px-6 pb-4">
-          Don't have an account?{" "}
-          <Link href="/Seller/Admin_Verify/Admin_Resister" className="text-green-500 hover:underline">
+
+        <p className="text-sm text-gray-300 mt-6 text-center">
+          Don&apos;t have an account?{' '}
+          <Link
+            href="/Seller/Admin_Verify/Admin_Resister"
+            className="text-cyan-400 hover:underline"
+          >
             Register here
           </Link>
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 };

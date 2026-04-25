@@ -19,14 +19,14 @@ export default function AboutPage() {
     <div className="bg-white text-gray-800 overflow-hidden">
 
       {/* HERO */}
-<section className="relative min-h-screen flex flex-col justify-center items-center text-center px-6 overflow-hidden bg-gradient-to-b from-green-50 via-white to-white">
+<section className="relative min-h-screen flex flex-col justify-center items-center text-center px-6 overflow-hidden bg-linear-to-b from-green-50 via-white to-white">
 
   {/* BACKGROUND GLOW */}
-  <div className="absolute top-[-100px] left-[-100px] w-[300px] h-[300px] bg-green-300 rounded-full blur-3xl opacity-30"></div>
-  <div className="absolute bottom-[-120px] right-[-120px] w-[350px] h-[350px] bg-green-200 rounded-full blur-3xl opacity-30"></div>
+  <div className="absolute -top-24 -left-24 w-72 h-72 bg-green-300 rounded-full blur-3xl opacity-30"></div>
+  <div className="absolute -bottom-32 -right-32 w-80  h-80 bg-green-200 rounded-full blur-3xl opacity-30"></div>
 
   {/* GRID */}
-  <div className="absolute inset-0 bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)] bg-[size:40px_40px] opacity-20"></div>
+  <div className="absolute inset-0 bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)] bg-[size-40px_40px] opacity-20"></div>
 
  {/* 💊 GLOWING MEDICINE - HORIZONTAL */}
 <div className="absolute inset-0 flex justify-center items-center pointer-events-none">
@@ -180,19 +180,19 @@ export default function AboutPage() {
 
     {[
       {
-        name: "Sourav",
+        name: "Andu",
         role: "Full Stack Developer",
-        img: "/developer.jpg",
+        img: "/team/teammem1.jpg",
       },
       {
-        name: "Rahul",
+        name: "Pandu",
         role: "Backend Engineer",
-        img: "/team/member2.jpg",
+        img: "/team/teammem2.jpg",
       },
       {
-        name: "Priya",
+        name: "Gandu",
         role: "UI/UX Designer",
-        img: "/team/member3.jpg",
+        img: "/team/teammem3.jpg",
       },
     ].map(
       (

@@ -4,7 +4,7 @@ import { FaHeartbeat, FaUserMd, FaPills, FaShieldAlt } from "react-icons/fa";
 
 export default function FollowUpSection() {
   return (
-    <section className="relative bg-gradient-to-br from-[#f8fbff] via-[#eef6ff] to-[#e9f8f9] py-24 px-6 md:px-16 overflow-hidden">
+    <section className="relative bg-linear-to-br from-[#f8fbff] via-[#eef6ff] to-[#e9f8f9] py-24 px-6 md:px-16 overflow-hidden">
       {/* Floating Counters */}
       <div className="max-w-6xl mx-auto mb-20 text-center">
         <motion.h2

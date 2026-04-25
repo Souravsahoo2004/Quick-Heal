@@ -9,6 +9,8 @@ import { auth, firestore } from "@/lib/firebase";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { motion } from "framer-motion";
+import { Stethoscope, HeartPulse } from "lucide-react";
 
 const AdminRegisterPage = () => {
   const [name, setName] = useState("");
@@ -31,8 +33,9 @@ const AdminRegisterPage = () => {
 
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
+
       await setDoc(
-        doc(firestore, "adminUsers", cred.user.uid), // Store in adminUsers
+        doc(firestore, "adminUsers", cred.user.uid),
         {
           name,
           email: cred.user.email,
@@ -41,18 +44,20 @@ const AdminRegisterPage = () => {
         },
         { merge: true }
       );
+
       await sendEmailVerification(cred.user);
-      setMessage("Registration successful! Please verify your email before logging in.");
+
+      setMessage(
+        "Registration successful! Please verify your email before logging in."
+      );
+
       setName("");
       setEmail("");
       setPassword("");
       setConfirmPassword("");
     } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unknown error occurred");
-      }
+      if (err instanceof Error) setError(err.message);
+      else setError("An unknown error occurred");
     }
   };
 
@@ -61,103 +66,124 @@ const AdminRegisterPage = () => {
   };
 
   return (
-    <div className="bg-gradient-to-b from-gray-600 to-black justify-center items-center h-screen w-screen flex flex-col relative p-4 pt-24">
-      <div className="flex items-center justify-center relative w-full max-w-md mb-6">
-        <Button
-          onClick={handleBack}
-          variant="outline"
-          className="absolute left-0 bg-transparent border-green-400 text-green-400 hover:bg-green-400 hover:text-white"
-        >
-          ← Back
-        </Button>
-        <h2 className="text-2xl font-bold text-center text-white">
-          Create Admin<span className="text-green-400"> Account</span>
-        </h2>
-      </div>
-      <div className="p-5 border border-gray-300 rounded">
-        <form onSubmit={handleRegister} className="space-y-6 px-6 pb-4">
+    <div className="relative flex items-center justify-center min-h-screen bg-linear-to-br from-blue-900 via-slate-900 to-black overflow-hidden">
+
+      {/* background blobs */}
+      <motion.div
+        className="absolute w-72 h-72 bg-cyan-500 rounded-full blur-3xl opacity-20"
+        animate={{ x: [0, 100, -50, 0], y: [0, -50, 50, 0] }}
+        transition={{ duration: 12, repeat: Infinity }}
+      />
+
+      <motion.div
+        className="absolute w-72 h-72 bg-green-500 rounded-full blur-3xl opacity-20"
+        animate={{ x: [0, -100, 50, 0], y: [0, 50, -50, 0] }}
+        transition={{ duration: 15, repeat: Infinity }}
+      />
+
+      {/* card */}
+      <motion.div
+        initial={{ opacity: 0, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="backdrop-blur-xl bg-white/10 border border-white/20 shadow-2xl rounded-3xl p-8 w-full max-w-md z-10"
+      >
+        {/* header */}
+        <div className="flex items-center justify-between mb-6">
+          <Button
+            onClick={handleBack}
+            variant="outline"
+            className="border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-white"
+          >
+            ← Back
+          </Button>
+
+          <div className="flex items-center gap-2 text-white">
+            <Stethoscope className="text-cyan-400" />
+            <h2 className="text-2xl font-semibold">
+              Admin <span className="text-cyan-400">Register</span>
+            </h2>
+          </div>
+        </div>
+
+        {/* icon */}
+        <div className="flex justify-center mb-6">
+          <motion.div
+            animate={{ scale: [1, 1.1, 1] }}
+            transition={{ repeat: Infinity, duration: 2 }}
+            className="p-4 bg-cyan-500/20 rounded-full"
+          >
+            <HeartPulse className="text-cyan-400 w-8 h-8" />
+          </motion.div>
+        </div>
+
+        {/* form */}
+        <form onSubmit={handleRegister} className="space-y-5">
           <div>
-            <label
-              htmlFor="name"
-              className="text-sm font-medium block mb-2 text-gray-300"
-            >
-              Name
-            </label>
+            <label className="text-sm text-gray-300">Name</label>
             <input
               type="text"
-              id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="border outline-none sm:text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5 bg-gray-600 border-gray-500 placeholder-gray-400 text-white"
+              className="w-full mt-1 p-3 rounded-xl bg-white/10 border border-gray-500 text-white focus:ring-2 focus:ring-cyan-400 outline-none"
             />
           </div>
+
           <div>
-            <label
-              htmlFor="email"
-              className="text-sm font-medium block mb-2 text-gray-300"
-            >
-              Email Address
-            </label>
+            <label className="text-sm text-gray-300">Email Address</label>
             <input
               type="email"
-              id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="border outline-none sm:text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5 bg-gray-600 border-gray-500 placeholder-gray-400 text-white"
+              className="w-full mt-1 p-3 rounded-xl bg-white/10 border border-gray-500 text-white focus:ring-2 focus:ring-cyan-400 outline-none"
             />
           </div>
-          <div className="flex space-x-4">
-            <div className="w-1/2">
-              <label
-                htmlFor="password"
-                className="text-sm font-medium block mb-2 text-gray-300"
-              >
-                Password
-              </label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="border outline-none sm:text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5 bg-gray-600 border-gray-500 placeholder-gray-400 text-white"
-              />
-            </div>
-            <div className="w-1/2">
-              <label
-                htmlFor="confirmPassword"
-                className="text-sm font-medium block mb-2 text-gray-300"
-              >
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                id="confirmPassword"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                className="border outline-none sm:text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5 bg-gray-600 border-gray-500 placeholder-gray-400 text-white"
-              />
-            </div>
+
+          <div className="flex gap-3">
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-1/2 p-3 rounded-xl bg-white/10 border border-gray-500 text-white focus:ring-2 focus:ring-cyan-400"
+            />
+
+            <input
+              type="password"
+              placeholder="Confirm"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              className="w-1/2 p-3 rounded-xl bg-white/10 border border-gray-500 text-white focus:ring-2 focus:ring-cyan-400"
+            />
           </div>
-          {error && <p className="text-red-500">{error}</p>}
-          {message && <p className="text-green-500">{message}</p>}
-          <button
+
+          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {message && <p className="text-green-400 text-sm">{message}</p>}
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             type="submit"
-            className="w-full flex justify-center py-2 px-4 border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-offset-2 focus:ring-indigo-500 hover:transition-all hover:scale-105"
+            className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-medium shadow-lg"
           >
             Sign Up
-          </button>
+          </motion.button>
         </form>
-        <p className="text-sm font-medium text-gray-300 space-y-6 px-6 pb-4">
-          Already have an account?{" "}
-          <Link href="/Seller/Admin_Verify/Admin_Login" className="text-green-500 hover:underline ">
+
+        <p className="text-sm text-gray-300 mt-6 text-center">
+          Already have an account?{' '}
+          <Link
+            href="/Seller/Admin_Verify/Admin_Login"
+            className="text-cyan-400 hover:underline"
+          >
             LogIn here
           </Link>
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 };
