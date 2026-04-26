@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import nodemailer from "nodemailer";
+import { api } from "convex/_generated/api";
+import { ConvexHttpClient } from "convex/browser";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -8,7 +10,7 @@ export async function GET(req: NextRequest) {
   const id = searchParams.get("id");
   const uid = searchParams.get("uid");
   const action = searchParams.get("action"); // accept | decline
-
+ 
   if (!id || !uid || !action) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
@@ -42,6 +44,13 @@ export async function GET(req: NextRequest) {
       pass: process.env.SMTP_PASS,
     },
   });
+  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+const doctorData = await convex.query(api.doctors.getDoctorById, {
+  id: data?.doctorId,
+});
+ const doctorName = doctorData?.name;
+
 
   await transporter.sendMail({
     from: process.env.SMTP_USER,
@@ -50,7 +59,7 @@ export async function GET(req: NextRequest) {
     html: `
       <h2>Appointment ${newStatus.toUpperCase()}</h2>
       <p>Hello ${data?.name},</p>
-      <p>Your appointment with <b>${data?.doctor}</b> has been 
+      <p>Your appointment with <b>${doctorName}</b> has been 
       <b style="color:${newStatus === "accepted" ? "green" : "red"}">
       ${newStatus}
       </b>.</p>

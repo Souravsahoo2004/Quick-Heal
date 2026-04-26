@@ -490,15 +490,15 @@ setPwd(false)
   doctor: prev.doctor === doc._id ? '' : doc._id, // ✅ use ID
 }))
   }}
-  className={`relative p-4 rounded-2xl border transition-all duration-300 cursor-pointer bg-white
-    ${form.doctor === doc.name 
-      ? 'border-cyan-600 shadow-lg ring-2 ring-cyan-200' 
-      : 'border-gray-200 hover:shadow-md hover:border-gray-300'}`}
+ className={`relative p-4 rounded-2xl border transition-all duration-300 cursor-pointer bg-white
+  ${form.doctor === doc._id 
+    ? 'border-cyan-600 shadow-lg ring-2 ring-cyan-200' 
+    : 'border-gray-200 hover:shadow-md hover:border-gray-300'}`}
 >
 
-{form.doctor === doc.name && (
-  <div className="absolute top-3 right-3 bg-cyan-600 text-white text-xs px-2 py-1 rounded-full">
-    Selected
+{form.doctor === doc._id && (
+  <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow">
+    ✔ Selected
   </div>
 )}
 
