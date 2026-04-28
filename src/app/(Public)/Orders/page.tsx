@@ -33,11 +33,25 @@ interface ConvexAddress {
 export default function OrderPage() {
   const { cartItems, getSubtotal, clearCart } = useCart();
   const router = useRouter();
-
+const [paymentMethod, setPaymentMethod] = useState<string>("upi");
   const [selectedAddressId, setSelectedAddressId] = useState<Id<"addresses"> | null>(null);
   const [isPlacingOrder, setIsPlacingOrder] = useState<boolean>(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+
+
+const [upiId, setUpiId] = useState("");
+const [cardDetails, setCardDetails] = useState({
+  number: "",
+  name: "",
+  expiry: "",
+  cvv: "",
+});
+const [selectedWallet, setSelectedWallet] = useState("");
+
+
+
+
 
   // ✅ Convex queries and mutations
   const selectedAddress = useQuery(
@@ -102,6 +116,24 @@ export default function OrderPage() {
   const handlePlaceOrder = async () => {
     try {
       setIsPlacingOrder(true);
+
+
+if (paymentMethod === "upi" && !upiId) {
+  alert("Enter UPI ID");
+  return;
+}
+
+if (paymentMethod === "card" && !cardDetails.number) {
+  alert("Enter card details");
+  return;
+}
+
+if (paymentMethod === "wallet" && !selectedWallet) {
+  alert("Select a wallet");
+  return;
+}
+
+
       
       if (!selectedAddress || !userId || !userEmail) {
         throw new Error("Missing required information");
@@ -150,6 +182,10 @@ export default function OrderPage() {
         month: "short",
         day: "numeric",
       });
+
+
+
+
 
       // ✅ Send confirmation emails to BOTH customer and admin
       console.log("📧 Sending order confirmation emails...");
@@ -232,7 +268,7 @@ export default function OrderPage() {
         `✅ Admin has been notified`
       );
       
-      router.push("/my-Orders");
+      router.push("/Greeting");
 
     } catch (e: any) {
       console.error("Error placing order:", e);
@@ -386,6 +422,205 @@ export default function OrderPage() {
               <span className="text-green-600">₹{total.toFixed(2)}</span>
             </div>
           </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{/* Payment Method Section */}
+<div className="bg-gray-50 p-4 rounded-lg border">
+  <h3 className="font-medium text-gray-800 mb-3">Payment Method</h3>
+
+  <div className="space-y-3">
+
+    {/* UPI */}
+    <label className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition ${
+      paymentMethod === "upi" ? "border-green-500 bg-green-50" : "hover:border-gray-400"
+    }`}>
+      <div className="flex items-center gap-3">
+        <input
+          type="radio"
+          name="payment"
+          checked={paymentMethod === "upi"}
+          onChange={() => setPaymentMethod("upi")}
+        />
+        <div>
+          <p className="font-medium">UPI</p>
+          <p className="text-xs text-gray-500">Google Pay, PhonePe, Paytm</p>
+        </div>
+      </div>
+      <span className="text-green-600 text-sm font-medium">Fast</span>
+    </label>
+
+    {/* Card */}
+    <label className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition ${
+      paymentMethod === "card" ? "border-green-500 bg-green-50" : "hover:border-gray-400"
+    }`}>
+      <div className="flex items-center gap-3">
+        <input
+          type="radio"
+          name="payment"
+          checked={paymentMethod === "card"}
+          onChange={() => setPaymentMethod("card")}
+        />
+        <div>
+          <p className="font-medium">Credit / Debit Card</p>
+          <p className="text-xs text-gray-500">Visa, MasterCard, RuPay</p>
+        </div>
+      </div>
+      <span className="text-gray-500 text-sm">Secure</span>
+    </label>
+
+    {/* Wallet */}
+    <label className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition ${
+      paymentMethod === "wallet" ? "border-green-500 bg-green-50" : "hover:border-gray-400"
+    }`}>
+      <div className="flex items-center gap-3">
+        <input
+          type="radio"
+          name="payment"
+          checked={paymentMethod === "wallet"}
+          onChange={() => setPaymentMethod("wallet")}
+        />
+        <div>
+          <p className="font-medium">Wallets</p>
+          <p className="text-xs text-gray-500">Paytm Wallet, Amazon Pay</p>
+        </div>
+      </div>
+    </label>
+
+    {/* COD */}
+    <label className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition ${
+      paymentMethod === "cod" ? "border-green-500 bg-green-50" : "hover:border-gray-400"
+    }`}>
+      <div className="flex items-center gap-3">
+        <input
+          type="radio"
+          name="payment"
+          checked={paymentMethod === "cod"}
+          onChange={() => setPaymentMethod("cod")}
+        />
+        <div>
+          <p className="font-medium">Cash on Delivery</p>
+          <p className="text-xs text-gray-500">Pay when item arrives</p>
+        </div>
+      </div>
+      <span className="text-orange-500 text-sm">Popular</span>
+    </label>
+
+  </div>
+</div>
+
+
+
+
+
+
+
+{/* Dynamic Payment Details */}
+<div className="bg-white p-4 rounded-lg border mt-4">
+
+  {/* UPI */}
+  {paymentMethod === "upi" && (
+    <div>
+      <h4 className="font-medium mb-2">Enter UPI ID</h4>
+      <input
+        type="text"
+        placeholder="example@upi"
+        value={upiId}
+        onChange={(e) => setUpiId(e.target.value)}
+        className="w-full border p-2 rounded-lg outline-none focus:ring-2 focus:ring-green-400"
+      />
+    </div>
+  )}
+
+  {/* Card */}
+  {paymentMethod === "card" && (
+    <div className="space-y-3">
+      <h4 className="font-medium">Card Details</h4>
+
+      <input
+        type="text"
+        placeholder="Card Number"
+        value={cardDetails.number}
+        onChange={(e) => setCardDetails({ ...cardDetails, number: e.target.value })}
+        className="w-full border p-2 rounded-lg"
+      />
+
+      <input
+        type="text"
+        placeholder="Card Holder Name"
+        value={cardDetails.name}
+        onChange={(e) => setCardDetails({ ...cardDetails, name: e.target.value })}
+        className="w-full border p-2 rounded-lg"
+      />
+
+      <div className="flex gap-3">
+        <input
+          type="text"
+          placeholder="MM/YY"
+          value={cardDetails.expiry}
+          onChange={(e) => setCardDetails({ ...cardDetails, expiry: e.target.value })}
+          className="w-1/2 border p-2 rounded-lg"
+        />
+        <input
+          type="password"
+          placeholder="CVV"
+          value={cardDetails.cvv}
+          onChange={(e) => setCardDetails({ ...cardDetails, cvv: e.target.value })}
+          className="w-1/2 border p-2 rounded-lg"
+        />
+      </div>
+    </div>
+  )}
+
+  {/* Wallet */}
+  {paymentMethod === "wallet" && (
+    <div>
+      <h4 className="font-medium mb-2">Select Wallet</h4>
+
+      <div className="space-y-2">
+        {["Paytm", "Amazon Pay", "PhonePe Wallet"].map((wallet) => (
+          <label key={wallet} className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              checked={selectedWallet === wallet}
+              onChange={() => setSelectedWallet(wallet)}
+            />
+            {wallet}
+          </label>
+        ))}
+      </div>
+    </div>
+  )}
+
+  {/* COD */}
+  {paymentMethod === "cod" && (
+    <p className="text-gray-600 text-sm">
+      You will pay in cash when the order is delivered.
+    </p>
+  )}
+
+</div>
+
+
+
+
+
+
+
+
+
 
           {/* Email Notification Info */}
           <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">

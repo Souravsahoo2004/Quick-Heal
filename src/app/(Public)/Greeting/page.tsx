@@ -170,7 +170,7 @@ export default function GreetingPage() {
         className="mt-10 text-gray-500 text-sm text-center"
       >
         Need help?{" "}
-        <a href="/support" className="text-emerald-600 hover:underline">
+        <a href="/terms-and-privacy" className="text-emerald-600 hover:underline">
           Contact Support
         </a>
       </motion.footer>
